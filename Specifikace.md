@@ -20,7 +20,7 @@ Zpracování SVG formátu bude omezeno na:
 - [Secure static mode](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#secure-static-mode) - program nebude podporovat žádné interakce s uživatelem (animace, reakce na to co uživatel dělá).
 - [File processing](https://www.w3.org/TR/2018/CR-SVG2-20181004/conform.html#ConformingSVGStandAloneFiles) - program bude podporovat pouze čisté soubory SVG (pro zjednodušení budeme používat [zjednodušené XML](https://dvcs.w3.org/hg/microxml/raw-file/tip/spec/microxml.html#character-references)
 
-Tedy co bude povoleno za SVG elementy (všechny se budou používat bez namespaces, neboť je zjednodušené XML nepodporuje)?
+A budou povoleny pouze tyto SVG elementy (všechny se budou používat bez namespaces, neboť je zjednodušené XML nepodporuje):
 - `svg` - root
 - [`g`](https://www.w3.org/TR/2018/CR-SVG2-20181004/struct.html#GElement) - může obsahovat pouze další zde zmíněné *elements* a `presentation` atributy
 - graphics elementy (podporují `presentation` atributy)
