@@ -1,0 +1,31 @@
+project(mff_parser_combinator)
+
+set(CMAKE_CXX_STANDARD 20)
+
+enable_testing()
+
+add_library(${PROJECT_NAME} src/buffered_stream.cpp)
+add_library(mff::parser_combinator ALIAS ${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME}
+    tl::expected
+)
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+)
+
+### Tests
+
+file(GLOB test-sources CONFIGURE_DEPENDS tests/*.cpp)
+list(FILTER test-sources EXCLUDE REGEX "tests/test.cpp")
+add_executable(${PROJECT_NAME}-tests "${test-sources}")
+
+target_link_libraries(${PROJECT_NAME}-tests
+    PRIVATE
+    Catch2::Catch2
+    mff::parser_combinator
+    expected
+)
+
+add_test(NAME mff::parser_combinator::tests COMMAND ${PROJECT_NAME}-tests)
