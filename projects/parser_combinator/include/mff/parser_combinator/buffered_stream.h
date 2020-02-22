@@ -3,7 +3,7 @@
 #include <deque>
 #include <istream>
 
-#include "mff/parser_combinator/stream.h"
+#include <mff/parser_combinator/stream.h>
 
 namespace mff::parser_combinator {
 

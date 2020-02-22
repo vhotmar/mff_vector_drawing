@@ -4,7 +4,6 @@
 #include <catch2/catch.hpp>
 
 #include <mff/parser_combinator/buffered_stream.h>
-#include <mff/parser_combinator/combinators/many.h>
 
 SCENARIO("stream_buffer can be read from")
 {

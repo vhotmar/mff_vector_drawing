@@ -12,20 +12,26 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_include_directories(${PROJECT_NAME}
-    PUBLIC ${PROJECT_SOURCE_DIR}/include
-)
+        PUBLIC ${PROJECT_SOURCE_DIR}/include
+        )
 
 ### Tests
 
-file(GLOB test-sources CONFIGURE_DEPENDS tests/*.cpp)
+file(GLOB_RECURSE test-sources CONFIGURE_DEPENDS tests/*.cpp)
 list(FILTER test-sources EXCLUDE REGEX "tests/test.cpp")
 add_executable(${PROJECT_NAME}-tests "${test-sources}")
 
+# Can add benchmarks in the future
+# target_compile_definitions(${PROJECT_NAME}-tests
+#    PRIVATE
+#     -DCATCH_CONFIG_ENABLE_BENCHMARKING
+# )
+
 target_link_libraries(${PROJECT_NAME}-tests
-    PRIVATE
-    Catch2::Catch2
-    mff::parser_combinator
-    expected
-)
+        PRIVATE
+        Catch2::Catch2
+        mff::parser_combinator
+        expected
+        )
 
 add_test(NAME mff::parser_combinator::tests COMMAND ${PROJECT_NAME}-tests)
