@@ -22,10 +22,11 @@ auto tuple_impl(Parser parser) {
     using Output = std::tuple<utils::parser_output_t < Parser, Input>>;
 
     return [parser](const Input& input) -> ParserResult <Input, Output, Error> {
-        auto result = TRY(parser(input));
+        auto result = parser(input);
+        if (!result) return tl::make_unexpected(result.error());
 
         // if we got only one parser redirect the output
-        return make_parser_result(result.next_input, std::make_tuple(result.output));
+        return make_parser_result(result->next_input, std::make_tuple(result->output));
     };
 }
 
@@ -39,13 +40,15 @@ auto tuple_impl(Parser parser, Others... others) {
     using Output = typename prepend_type_to_tuple<CurrentOutput, BaseOutput>::type;
 
     return [parser, base_parser](const Input& input) -> ParserResult <Input, Output, Error> {
-        auto parser_result = TRY(parser(input));
+        auto parser_result = parser(input);
+        if (!parser_result) return tl::make_unexpected(parser_result.error());
 
-        auto base_result = TRY(base_parser(parser_result.next_input));
+        auto base_result = base_parser(parser_result->next_input);
+        if (!base_result) return tl::make_unexpected(base_result.error());
 
         return make_parser_result(
-            base_result.next_input,
-            std::tuple_cat(std::make_tuple(parser_result.output), base_result.output));
+            base_result->next_input,
+            std::tuple_cat(std::make_tuple(parser_result->output), base_result->output));
     };
 }
 

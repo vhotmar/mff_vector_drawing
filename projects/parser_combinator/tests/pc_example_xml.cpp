@@ -62,8 +62,10 @@ bool is_name_char(char c) {
 // Name ::=  (Letter | '_' | ':') (NameChar)*
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, Input, Error> parse_name(const Input& input) {
-    auto first_char_result = TRY(parsers::complete::take<Input, Error>(1)(input));
-    auto first_char = first_char_result.output[0];
+    auto first_char_result = parsers::complete::take<Input, Error>(1)(input);
+    if (!first_char_result) return tl::make_unexpected(first_char_result.error());
+
+    auto first_char = first_char_result->output[0];
 
     if (!(is_xml_letter(first_char) || first_char == '_' || first_char == ':')) {
         return mff::parser_combinator::make_parser_result_error<Input, Input, Error>(input, error::ErrorKind::User);
@@ -328,13 +330,14 @@ ParserResult<Input, std::vector<xml_content_type<Input>>, Error> parse_contents(
 
     std::vector<xml_content_type<Input>> content;
 
-    auto char_data_result = TRY(parse_optional_char_data(input));
+    auto char_data_result = parse_optional_char_data(input);
+    if (!char_data_result) return tl::make_unexpected(char_data_result.error());
 
-    if (char_data_result.output != std::nullopt) {
-        content.push_back(*char_data_result.output);
+    if (char_data_result->output != std::nullopt) {
+        content.push_back(*char_data_result->output);
     }
 
-    auto i = char_data_result.next_input;
+    auto i = char_data_result->next_input;
 
     while (true) {
         auto element = parse_element<Input, Error>(i);
@@ -345,13 +348,14 @@ ParserResult<Input, std::vector<xml_content_type<Input>>, Error> parse_contents(
 
         content.push_back(convert_xml_element_to_content_type(std::move(element->output)));
 
-        auto chars = TRY(parse_optional_char_data(element->next_input));
+        auto chars = parse_optional_char_data(element->next_input);
+        if (!chars) return tl::make_unexpected(chars.error());
 
-        if (chars.output != std::nullopt) {
-            content.emplace_back(*chars.output);
+        if (chars->output != std::nullopt) {
+            content.emplace_back(*chars->output);
         }
 
-        i = chars.next_input;
+        i = chars->next_input;
     }
 
     return mff::parser_combinator::make_parser_result(i, std::move(content));
@@ -359,14 +363,19 @@ ParserResult<Input, std::vector<xml_content_type<Input>>, Error> parse_contents(
 
 template <typename Input, typename Error>
 ParserResult<Input, xml_element<Input>, Error> parse_whole_element(const Input& input) {
-    auto start_result = TRY(parse_start_element_tag(input));
-    auto content_result = TRY(parse_contents(start_result.next_input));
-    auto end_result = TRY(parse_end_element_tag(start_result.output.name, content_result.next_input));
+    auto start_result = parse_start_element_tag(input);
+    if (!start_result) return tl::make_unexpected(start_result.error());
+
+    auto content_result = parse_contents(start_result->next_input);
+    if (!start_result) return tl::make_unexpected(start_result.error());
+
+    auto end_result = parse_end_element_tag(start_result->output.name, content_result->next_input);
+    if (!start_result) return tl::make_unexpected(start_result.error());
 
     return mff::parser_combinator::make_parser_result(
-        end_result.next_input,
-        xml_element<Input>{std::move(start_result.output.name), std::move(start_result.output.attributes),
-            std::move(content_result.output)}
+        end_result->next_input,
+        xml_element<Input>{std::move(start_result->output.name), std::move(start_result->output.attributes),
+            std::move(content_result->output)}
     );
 }
 

@@ -24,14 +24,17 @@ auto pair(
     using Output = std::pair<Parser1Output, Parser2Output>;
 
     return [first, second](const Input& input) -> ParserResult <Input, Output, Error> {
-        auto first_result = TRY(first(input));
-        auto second_result = TRY(second(first_result.next_input));
+        auto first_result = first(input);
+        if (!first_result) return tl::make_unexpected(first_result.error());
+
+        auto second_result = second(first_result->next_input);
+        if (!second_result) return tl::make_unexpected(second_result.error());
 
         return make_parser_result<Input, Output, Error>(
-            second_result.next_input,
+            second_result->next_input,
             std::make_pair(
-                std::move(first_result.output),
-                std::move(second_result.output)
+                std::move(first_result->output),
+                std::move(second_result->output)
             )
         );
     };

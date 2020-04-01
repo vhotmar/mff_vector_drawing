@@ -26,6 +26,8 @@ int main() {
     auto physical_device = vulkan::get_physical_device(instance.instance.get(), surface.get()).value();
     auto logical_device = vulkan::create_logical_device(physical_device, surface.get()).value();
 
+    // vulkan::create_instance("asdf").and_then([]() { })
+
     event_loop.run([&](auto event) {
         if (auto window_event = std::get_if<mwin::events::WindowEvent>(&event)) {
             if (std::holds_alternative<mwin::events::window::CloseRequested>(window_event->event)) {

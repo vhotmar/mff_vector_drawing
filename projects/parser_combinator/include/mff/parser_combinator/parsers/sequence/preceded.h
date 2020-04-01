@@ -15,9 +15,10 @@ auto preceded(Parser1 first, Parser2 second) {
     using Output = utils::parser_output_t<Parser2, Input>;
 
     return [first, second](const Input& input) -> ParserResult <Input, Output, Error> {
-        auto first_result = TRY(first(input));
+        auto first_result = first(input);
+        if (!first_result) return tl::make_unexpected(first_result.error());
 
-        return second(first_result.next_input);
+        return second(first_result->next_input);
     };
 }
 

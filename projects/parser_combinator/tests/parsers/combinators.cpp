@@ -13,13 +13,13 @@ SCENARIO("there exists combinators") {
     GIVEN("map combinator ") {
         auto parser = parsers::combinator::map<std::string>(
             parsers::complete::digit1<std::string>,
-            [](std::string res) {
+            [](std::string res) -> unsigned long {
                 return res.length();
             }
         );
 
         WHEN("we try to parse \"123456\"") {
-            auto result = parser("123456");
+            mff::parser_combinator::ParserResult<std::string, unsigned long> result = parser("123456");
 
             THEN("it should return 6 as output") {
                 REQUIRE(result == mff::parser_combinator::make_parser_result(""s, (unsigned long) 6));

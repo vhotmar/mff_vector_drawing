@@ -1,5 +1,5 @@
 
-message(STATUS "Preparing Boost")
+message(STATUS "Preparing Boosts")
 
 set(Boost_USE_STATIC_LIBS OFF)
 

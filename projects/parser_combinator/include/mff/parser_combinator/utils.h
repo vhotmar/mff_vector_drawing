@@ -3,23 +3,6 @@
 #include <tuple>
 
 
-#define TRY(...)                                 \
-    ({                                           \
-        auto res = __VA_ARGS__;                  \
-        if (!res) {                              \
-            return tl::make_unexpected(res.error());  \
-        }                                        \
-        std::move(res.value());                  \
-    })
-
-#define TRY_V(...)                               \
-    ({                                           \
-        auto res = __VA_ARGS__;                  \
-        if (!res) {                              \
-            return tl::make_unexpected(res.error());  \
-        }                                        \
-    })
-
 namespace mff::parser_combinator::utils {
 
 
