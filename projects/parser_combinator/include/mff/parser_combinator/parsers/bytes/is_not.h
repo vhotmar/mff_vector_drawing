@@ -13,13 +13,13 @@ namespace complete {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename T
 >
 auto is_not(
     const T& arr
 ) {
-    return [arr](const Input& input) -> parser_result <Input, Input, Error> {
+    return [arr](const Input& input) -> ParserResult <Input, Input, Error> {
 
         return traits::input::split_at_position1_complete<Input, Error>(
             input,

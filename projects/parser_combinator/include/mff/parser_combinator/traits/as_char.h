@@ -7,12 +7,12 @@
 namespace mff::parser_combinator::traits {
 
 template <typename T>
-class as_char_trait {
+class AsCharTrait {
     static_assert(sizeof(T) == -1, "You have to have specialization for as_char");
 };
 
 template <>
-class as_char_trait<char> {
+class AsCharTrait<char> {
 public:
     char as_char(char c) {
         return c;
@@ -35,28 +35,28 @@ namespace as_char {
 
 template <typename T>
 char as_char(const T& input) {
-    as_char_trait<T> t;
+    AsCharTrait<T> t;
 
     return t.as_char(input);
 }
 
 template <typename T>
 bool is_alpha(const T& input) {
-    as_char_trait<T> t;
+    AsCharTrait<T> t;
 
     return t.is_alpha(input);
 }
 
 template <typename T>
 bool is_alphanum(const T& input) {
-    as_char_trait<T> t;
+    AsCharTrait<T> t;
 
     return t.is_alphanum(input);
 }
 
 template <typename T>
 bool is_dec_digit(const T& input) {
-    as_char_trait<T> t;
+    AsCharTrait<T> t;
 
     return t.is_dec_digit(input);
 }

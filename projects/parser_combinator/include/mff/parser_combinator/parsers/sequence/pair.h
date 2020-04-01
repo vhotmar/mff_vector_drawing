@@ -11,7 +11,7 @@ namespace mff::parser_combinator::parsers {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Parser1,
     typename Parser2
 >
@@ -23,15 +23,15 @@ auto pair(
     using Parser2Output = utils::parser_output_t<Parser2, Input>;
     using Output = std::pair<Parser1Output, Parser2Output>;
 
-    return [first, second](const Input& input) -> parser_result <Input, Output, Error> {
+    return [first, second](const Input& input) -> ParserResult <Input, Output, Error> {
         auto first_result = TRY(first(input));
         auto second_result = TRY(second(first_result.next_input));
 
         return make_parser_result<Input, Output, Error>(
             second_result.next_input,
             std::make_pair(
-                first_result.output,
-                second_result.output
+                std::move(first_result.output),
+                std::move(second_result.output)
             )
         );
     };

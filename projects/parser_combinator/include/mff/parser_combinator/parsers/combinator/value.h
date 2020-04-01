@@ -7,12 +7,14 @@
 
 namespace mff::parser_combinator::parsers::combinator {
 
-template <typename Input, typename Error = error::default_error <Input>, typename ValueType, typename Parser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename ValueType, typename Parser>
 auto value(ValueType val, Parser parser) {
-    return [val, parser](const Input& input) -> parser_result <Input, ValueType, Error> {
+    return [val, parser](const Input& input) -> ParserResult <Input, ValueType, Error> {
         auto result = TRY(parser(input));
 
-        return make_parser_result(result.next_input, val);
+        ValueType copy(val);
+
+        return make_parser_result(result.next_input, std::move(copy));
     };
 }
 

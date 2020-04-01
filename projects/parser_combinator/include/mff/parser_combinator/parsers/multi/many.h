@@ -7,12 +7,12 @@
 
 namespace mff::parser_combinator::parsers {
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser>
 auto many0(Parser parser) {
     using POutput = utils::parser_output_t<Parser, Input>;
     using Output = std::vector<POutput>;
 
-    return [parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [parser](const Input& input) -> ParserResult <Input, Output, Error> {
         Output result;
         Input i(input);
 
@@ -23,7 +23,7 @@ auto many0(Parser parser) {
                 auto error = parser_result.error();
 
                 if (error.is_error()) {
-                    return make_parser_result<Input, Output, Error>(i, result);
+                    return make_parser_result<Input, Output, Error>(i, std::move(result));
                 }
 
                 return tl::make_unexpected(error);

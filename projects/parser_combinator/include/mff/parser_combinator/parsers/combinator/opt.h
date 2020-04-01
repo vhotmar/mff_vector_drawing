@@ -7,11 +7,11 @@
 
 namespace mff::parser_combinator::parsers::combinator {
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser>
 auto opt(Parser parser) {
     using Output = std::optional<utils::parser_output_t < Parser, Input>>;
 
-    return [parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [parser](const Input& input) -> ParserResult <Input, Output, Error> {
         auto result = parser(input);
 
         if (!result) {

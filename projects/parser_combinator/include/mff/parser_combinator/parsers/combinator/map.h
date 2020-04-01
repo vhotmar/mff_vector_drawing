@@ -7,15 +7,15 @@
 
 namespace mff::parser_combinator::parsers::combinator {
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser, typename Map>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser, typename Map>
 auto map(Parser parser, Map map_fn) {
     using ParserOutput = utils::parser_output_t<Parser, Input>;
     using Output = std::invoke_result_t<Map, ParserOutput>;
 
-    return [map_fn, parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [map_fn, parser](const Input& input) -> ParserResult <Input, Output, Error> {
         auto result = TRY(parser(input));
 
-        return make_parser_result(result.next_input, map_fn(result.output));
+        return make_parser_result(result.next_input, map_fn(std::move(result.output)));
     };
 }
 

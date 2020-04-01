@@ -7,7 +7,7 @@ namespace mff::parser_combinator::parsers {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Parser1,
     typename SeparatorParser,
     typename Parser2
@@ -15,12 +15,12 @@ template <
 auto delimited(Parser1 first, SeparatorParser sep, Parser2 second) {
     using Output = utils::parser_output_t<SeparatorParser, Input>;
 
-    return [first, sep, second](const Input& input) -> parser_result <Input, Output, Error> {
+    return [first, sep, second](const Input& input) -> ParserResult <Input, Output, Error> {
         auto first_result = TRY(first(input));
         auto sep_result = TRY(sep(first_result.next_input));
         auto second_result = TRY(second(sep_result.next_input));
 
-        return make_parser_result<Input, Output, Error>(second_result.next_input, sep_result.output);
+        return make_parser_result<Input, Output, Error>(second_result.next_input, std::move(sep_result.output));
     };
 }
 

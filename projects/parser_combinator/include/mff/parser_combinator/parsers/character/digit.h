@@ -11,7 +11,7 @@ namespace mff::parser_combinator::parsers::complete {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>
+    typename Error = error::DefaultError <Input>
 >
 auto digit0(
     const Input& input
@@ -26,7 +26,7 @@ auto digit0(
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>
+    typename Error = error::DefaultError <Input>
 >
 auto digit1(
     const Input& input

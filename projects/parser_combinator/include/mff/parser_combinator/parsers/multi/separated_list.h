@@ -7,12 +7,12 @@
 
 namespace mff::parser_combinator::parsers {
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser, typename SeparatorParser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser, typename SeparatorParser>
 auto separated_list(SeparatorParser separator_parser, Parser item_parser) {
     using POutput = utils::parser_output_t<Parser, Input>;
     using Output = std::vector<POutput>;
 
-    return [separator_parser, item_parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [separator_parser, item_parser](const Input& input) -> ParserResult <Input, Output, Error> {
         Output result;
 
         // try to parse first item
@@ -25,7 +25,7 @@ auto separated_list(SeparatorParser separator_parser, Parser item_parser) {
             auto error = first_result.error();
 
             if (error.is_error()) {
-                return make_parser_result<Input, Output, Error>(input, result);
+                return make_parser_result<Input, Output, Error>(input, std::move(result));
             }
 
             return tl::make_unexpected(first_result.error());
@@ -53,7 +53,7 @@ auto separated_list(SeparatorParser separator_parser, Parser item_parser) {
                 auto error = separator_parser_result.error();
 
                 if (error.is_error()) {
-                    return make_parser_result<Input, Output, Error>(i, result);
+                    return make_parser_result<Input, Output, Error>(i, std::move(result));
                 }
 
                 return tl::make_unexpected(error);
@@ -75,7 +75,7 @@ auto separated_list(SeparatorParser separator_parser, Parser item_parser) {
                 auto error = item_parser_result.error();
 
                 if (error.is_error()) {
-                    return make_parser_result<Input, Output, Error>(i, result);
+                    return make_parser_result<Input, Output, Error>(i, std::move(result));
                 }
 
                 return tl::make_unexpected(error);
@@ -95,12 +95,12 @@ auto separated_list(SeparatorParser separator_parser, Parser item_parser) {
     };
 }
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser, typename SeparatorParser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser, typename SeparatorParser>
 auto separated_nonempty_list(SeparatorParser separator_parser, Parser item_parser) {
     using POutput = utils::parser_output_t<Parser, Input>;
     using Output = std::vector<POutput>;
 
-    return [separator_parser, item_parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [separator_parser, item_parser](const Input& input) -> ParserResult <Input, Output, Error> {
         Output result;
 
         // try to parse first item
@@ -133,7 +133,7 @@ auto separated_nonempty_list(SeparatorParser separator_parser, Parser item_parse
                 auto error = separator_parser_result.error();
 
                 if (error.is_error()) {
-                    return make_parser_result<Input, Output, Error>(i, result);
+                    return make_parser_result<Input, Output, Error>(i, std::move(result));
                 }
 
                 return tl::make_unexpected(error);
@@ -155,7 +155,7 @@ auto separated_nonempty_list(SeparatorParser separator_parser, Parser item_parse
                 auto error = item_parser_result.error();
 
                 if (error.is_error()) {
-                    return make_parser_result<Input, Output, Error>(i, result);
+                    return make_parser_result<Input, Output, Error>(i, std::move(result));
                 }
 
                 return tl::make_unexpected(error);

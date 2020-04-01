@@ -8,46 +8,46 @@ namespace mff::parser_combinator::error {
 
 namespace types {
 
-struct incomplete {
-    bool operator==(const incomplete& rhs) const {
+struct Incomplete {
+    bool operator==(const Incomplete& rhs) const {
         return true;
     }
 
-    bool operator!=(const incomplete& rhs) const {
+    bool operator!=(const Incomplete& rhs) const {
         return !operator==(rhs);
     }
 };
 
 template <typename Error>
-struct err {
-    err(Error e)
+struct Err {
+    Err(Error e)
         : error(e) {
     };
 
     Error error;
 
-    bool operator==(const err<Error>& rhs) const {
+    bool operator==(const Err<Error>& rhs) const {
         return error == rhs.error;
     }
 
-    bool operator!=(const err<Error>& rhs) const {
+    bool operator!=(const Err<Error>& rhs) const {
         return !operator==(rhs);
     }
 };
 
 template <typename Error>
-struct failure {
-    failure(Error e)
+struct Failure {
+    Failure(Error e)
         : error(e) {
     };
 
     Error error;
 
-    bool operator==(const failure<Error>& rhs) const {
+    bool operator==(const Failure<Error>& rhs) const {
         return error == rhs.error;
     }
 
-    bool operator!=(const failure<Error>& rhs) const {
+    bool operator!=(const Failure<Error>& rhs) const {
         return !operator==(rhs);
     }
 };
@@ -55,52 +55,52 @@ struct failure {
 }
 
 template <typename Error>
-class parser_error {
+class ParserError {
 public:
-    using incomplete_type = types::incomplete;
-    using error_type = types::err<Error>;
-    using failure_type = types::failure<Error>;
-    using data_type = std::variant<
-        incomplete_type,
-        error_type,
-        failure_type
+    using IncompleteType = types::Incomplete;
+    using ErrorType = types::Err<Error>;
+    using FailureType = types::Failure<Error>;
+    using DataType = std::variant<
+        IncompleteType,
+        ErrorType,
+        FailureType
     >;
 
-    parser_error(data_type data)
+    ParserError(DataType data)
         : data_(data) {
     };
 
     bool is_incomplete() const {
-        return std::holds_alternative<incomplete_type>(data_);
+        return std::holds_alternative<IncompleteType>(data_);
     }
 
     bool is_error() const {
-        return std::holds_alternative<error_type>(data_);
+        return std::holds_alternative<ErrorType>(data_);
     }
 
     bool is_failure() const {
-        return std::holds_alternative<failure_type>(data_);
+        return std::holds_alternative<FailureType>(data_);
     }
 
-    std::optional<incomplete_type> incomplete() const {
-        if (is_incomplete()) return std::get<incomplete_type>(data_);
+    std::optional<IncompleteType> incomplete() const {
+        if (is_incomplete()) return std::get<IncompleteType>(data_);
 
         return std::nullopt;
     }
 
     std::optional<Error> error() const {
-        if (is_error()) return std::get<error_type>(data_).error;
+        if (is_error()) return std::get<ErrorType>(data_).error;
 
         return std::nullopt;
     }
 
     std::optional<Error> failure() const {
-        if (is_failure()) return std::get<failure_type>(data_).error;
+        if (is_failure()) return std::get<FailureType>(data_).error;
 
         return std::nullopt;
     }
 
-    bool operator==(const parser_error<Error>& rhs) const {
+    bool operator==(const ParserError<Error>& rhs) const {
         if (is_failure() && rhs.is_failure()) {
             return failure() == rhs.failure();
         }
@@ -116,12 +116,12 @@ public:
         return false;
     }
 
-    bool operator!=(const parser_error<Error>& rhs) const {
+    bool operator!=(const ParserError<Error>& rhs) const {
         return !operator==(rhs);
     }
 
 private:
-    data_type data_;
+    DataType data_;
 };
 
 }

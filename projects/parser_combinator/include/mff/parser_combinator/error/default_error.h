@@ -5,20 +5,20 @@
 namespace mff::parser_combinator::error {
 
 template <typename Input>
-class default_error {
+class DefaultError {
 public:
-    default_error(Input i, ErrorKind k)
+    DefaultError(Input i, ErrorKind k)
         : input(i), kind(k) {
     };
 
     Input input;
     ErrorKind kind;
 
-    bool operator==(const default_error<Input>& rhs) const {
+    bool operator==(const DefaultError<Input>& rhs) const {
         return input == rhs.input && kind == rhs.kind;
     }
 
-    bool operator!=(const default_error<Input>& rhs) const {
+    bool operator!=(const DefaultError<Input>& rhs) const {
         return !operator==(rhs);
     }
 };

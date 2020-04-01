@@ -11,13 +11,13 @@ namespace mff::parser_combinator::parsers::complete {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Predicate
 >
 auto take_while(
     Predicate predicate
 ) {
-    return [predicate](const Input& input) -> parser_result <Input, Input, Error> {
+    return [predicate](const Input& input) -> ParserResult <Input, Input, Error> {
         auto predicate_complement = [predicate](auto c) { return !predicate(c); };
 
         return traits::input::split_at_position_complete<Input, Error>(
@@ -29,13 +29,13 @@ auto take_while(
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Predicate
 >
 auto take_while1(
     Predicate predicate
 ) {
-    return [predicate](const Input& input) -> parser_result <Input, Input, Error> {
+    return [predicate](const Input& input) -> ParserResult <Input, Input, Error> {
         auto predicate_complement = [predicate](auto c) { return !predicate(c); };
 
         return traits::input::split_at_position1_complete<Input, Error>(
@@ -48,7 +48,7 @@ auto take_while1(
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Predicate
 >
 auto take_while_m_n(
@@ -56,7 +56,7 @@ auto take_while_m_n(
     size_t n,
     Predicate predicate
 ) {
-    return [predicate, m, n](const Input& input) -> parser_result <Input, Input, Error> {
+    return [predicate, m, n](const Input& input) -> ParserResult <Input, Input, Error> {
         auto predicate_complement = [predicate](auto c) { return !predicate(c); };
 
         auto position = traits::iterator::position(input, predicate_complement);
@@ -72,10 +72,10 @@ auto take_while_m_n(
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>
+    typename Error = error::DefaultError <Input>
 >
 auto take(size_t count) {
-    return [count](const Input& input) -> parser_result <Input, Input, Error> {
+    return [count](const Input& input) -> ParserResult <Input, Input, Error> {
         auto length = traits::iterator::length(input);
 
         if (length < count) return make_parser_result_error<Input, Input, Error>(input, error::ErrorKind::Eof);

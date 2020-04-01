@@ -7,13 +7,13 @@
 namespace mff::parser_combinator::traits {
 
 template <typename T>
-class input_iterator_trait {
+class InputIteratorTrait {
 public:
     static_assert(sizeof(T) == -1, "You have to have specialization for input_iter");
 };
 
 template <>
-class input_iterator_trait<std::string> {
+class InputIteratorTrait<std::string> {
 public:
     using value_type = std::string::value_type;
     using const_iterator = std::string::const_iterator;
@@ -28,7 +28,7 @@ public:
 };
 
 template <>
-class input_iterator_trait<std::string_view> {
+class InputIteratorTrait<std::string_view> {
 public:
     using value_type = std::string_view::value_type;
     using const_iterator = std::string_view::const_iterator;
@@ -45,18 +45,18 @@ public:
 namespace iterator {
 
 template <typename T>
-using value_type_t = typename input_iterator_trait<T>::value_type;
+using value_type_t = typename InputIteratorTrait<T>::value_type;
 
 template <typename T>
 auto begin(const T& from) {
-    input_iterator_trait<T> trait;
+    InputIteratorTrait<T> trait;
 
     return trait.begin(from);
 }
 
 template <typename T>
 auto end(const T& from) {
-    input_iterator_trait<T> trait;
+    InputIteratorTrait<T> trait;
 
     return trait.end(from);
 }

@@ -8,7 +8,7 @@ namespace mff::parser_combinator::parsers {
 
 template <
     typename Input,
-    typename Error = error::default_error <Input>,
+    typename Error = error::DefaultError <Input>,
     typename Parser,
     typename SeparatorParser
 >

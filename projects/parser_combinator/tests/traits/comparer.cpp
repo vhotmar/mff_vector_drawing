@@ -14,7 +14,7 @@ SCENARIO("we can compare") {
             std::string b = "Hello";
 
             THEN("they should match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::ok);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::ok);
             }
         }
 
@@ -22,7 +22,7 @@ SCENARIO("we can compare") {
             std::string b = "Ciao";
 
             THEN("they should not match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::error);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::error);
             }
         }
 
@@ -30,7 +30,7 @@ SCENARIO("we can compare") {
             std::string b = "Hallo! Lieblings";
 
             THEN("they should not match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::error);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::error);
             }
         }
 
@@ -38,7 +38,7 @@ SCENARIO("we can compare") {
             std::string b = "Hello! Lieblings";
 
             THEN("they should be incomplete") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::incomplete);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::incomplete);
             }
         }
     }
@@ -52,7 +52,7 @@ SCENARIO("we can compare") {
             std::vector<char> b(b_s.begin(), b_s.end());
 
             THEN("they should match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::ok);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::ok);
             }
         }
 
@@ -61,7 +61,7 @@ SCENARIO("we can compare") {
             std::vector<char> b(b_s.begin(), b_s.end());
 
             THEN("they should not match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::error);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::error);
             }
         }
 
@@ -70,7 +70,7 @@ SCENARIO("we can compare") {
             std::vector<char> b(b_s.begin(), b_s.end());
 
             THEN("they should not match") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::error);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::error);
             }
         }
 
@@ -79,7 +79,7 @@ SCENARIO("we can compare") {
             std::vector<char> b(b_s.begin(), b_s.end());
 
             THEN("they should be incomplete") {
-                REQUIRE(traits::compare(a, b) == traits::compare_result::incomplete);
+                REQUIRE(traits::compare(a, b) == traits::CompareResult::incomplete);
             }
         }
     }

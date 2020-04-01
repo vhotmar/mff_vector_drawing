@@ -17,11 +17,11 @@ struct prepend_type_to_tuple<T, std::tuple<Args...>> {
     using type = std::tuple<T, Args...>;
 };
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser>
 auto tuple_impl(Parser parser) {
     using Output = std::tuple<utils::parser_output_t < Parser, Input>>;
 
-    return [parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [parser](const Input& input) -> ParserResult <Input, Output, Error> {
         auto result = TRY(parser(input));
 
         // if we got only one parser redirect the output
@@ -29,7 +29,7 @@ auto tuple_impl(Parser parser) {
     };
 }
 
-template <typename Input, typename Error = error::default_error <Input>, typename Parser, typename... Others>
+template <typename Input, typename Error = error::DefaultError <Input>, typename Parser, typename... Others>
 auto tuple_impl(Parser parser, Others... others) {
     auto base_parser = tuple_impl<Input, Error, Others...>(others...);
 
@@ -38,7 +38,7 @@ auto tuple_impl(Parser parser, Others... others) {
 
     using Output = typename prepend_type_to_tuple<CurrentOutput, BaseOutput>::type;
 
-    return [parser, base_parser](const Input& input) -> parser_result <Input, Output, Error> {
+    return [parser, base_parser](const Input& input) -> ParserResult <Input, Output, Error> {
         auto parser_result = TRY(parser(input));
 
         auto base_result = TRY(base_parser(parser_result.next_input));
@@ -54,7 +54,7 @@ auto tuple_impl(Parser parser, Others... others) {
 /**
  * tries list of parsers one by one until one succeeds
  */
-template <typename Input, typename Error = error::default_error <Input>, typename... Parsers>
+template <typename Input, typename Error = error::DefaultError <Input>, typename... Parsers>
 auto tuple(Parsers... parsers) {
     return detail::tuple_impl<Input, Error, Parsers...>(parsers...);
 }

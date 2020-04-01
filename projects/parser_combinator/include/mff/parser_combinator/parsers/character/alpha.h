@@ -11,7 +11,7 @@ namespace mff::parser_combinator::parsers::complete {
 
 template <
     typename Input,
-    typename Error = error::default_error<Input>
+    typename Error = error::DefaultError<Input>
 >
 auto alpha0(
     const Input& input
@@ -26,7 +26,7 @@ auto alpha0(
 
 template <
     typename Input,
-    typename Error = error::default_error<Input>
+    typename Error = error::DefaultError<Input>
 >
 auto alpha1(
     const Input& input
