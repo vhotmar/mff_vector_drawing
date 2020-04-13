@@ -1,6 +1,5 @@
 #include "instance.h"
 
-#include <fmt/format.h>
 #include <mff/algorithms.h>
 #include <set>
 #include <string>
@@ -55,72 +54,137 @@ std::set<std::string> get_required_instance_extensions() {
     return extensions;
 }
 
-tl::expected<InstanceRaw, std::string> create_instance(const std::string& name) {
+Version::Version(std::uint8_t maj, std::uint8_t min, std::uint8_t pat)
+    : major(maj), minor(min), patch(pat) {
+}
+
+std::uint32_t Version::to_int() {
+    return VK_MAKE_VERSION(major, minor, patch);
+}
+
+boost::leaf::result<Instance> Instance::build(
+    std::optional<ApplicationInfo> info,
+    const std::vector<std::string>& extensions,
+    const std::vector<std::string>& layers
+) {
     init_dispatcher();
 
-    vk::ApplicationInfo application_info(
-        name.c_str(),
-        VK_MAKE_VERSION(1, 0, 0),
-        "mff",
-        VK_MAKE_VERSION(1, 0, 0),
-        VK_API_VERSION_1_2
-    );
+    LEAF_AUTO(instance_extensions, to_result(vk::enumerateInstanceExtensionProperties()));
 
-    auto required_extensions = get_required_instance_extensions();
-    auto instance_extensions = VK_TRY(vk::enumerateInstanceExtensionProperties());
+    auto has_extension = [&](std::string extension) -> bool {
+        return mff::contains_if(
+            instance_extensions,
+            [&](auto item) { return item.extensionName == extension; }
+        );
+    };
 
     // check whether we can use the extensions
-    for (const auto& extension: required_extensions) {
-        if (!mff::contains_if(instance_extensions, [&](auto item) { return item.extensionName == extension; })) {
-            return tl::make_unexpected(fmt::format("Could not find extension: \"{}\"", extension));
+    for (const auto& extension: extensions) {
+        if (!has_extension(extension)) {
+            return boost::leaf::new_error(
+                create_instance_error_code::extension_not_found_error,
+                e_extension_not_found{extension}
+            );
         }
     }
 
-    auto required_layers = get_required_mff_layers();
-    auto instance_layers = VK_TRY(vk::enumerateInstanceLayerProperties());
+    LEAF_AUTO(instance_layers, to_result(vk::enumerateInstanceLayerProperties()));
+
+    auto has_layer = [&](std::string layer) -> bool {
+        return mff::contains_if(
+            instance_layers,
+            [&](auto item) { return item.layerName == layer; }
+        );
+    };
 
     // check whether we can use the layers
-    for (const auto& layer: required_layers) {
-        if (!mff::contains_if(instance_layers, [&](auto item) { return item.layerName == layer; })) {
-            return tl::make_unexpected(fmt::format("Could not find layer: \"{}\"", layer));
+    for (const auto& layer: layers) {
+        if (!has_layer(layer)) {
+            return boost::leaf::new_error(
+                create_instance_error_code::layer_not_found_error,
+                e_layer_not_found{layer}
+            );
         }
     }
 
-    auto required_extensions_c = utils::to_pointer_char_data(required_extensions);
-    auto layers_c = utils::to_pointer_char_data(required_layers);
+    auto extensions_c = utils::to_pointer_char_data(extensions);
+    auto layers_c = utils::to_pointer_char_data(layers);
+
+    std::optional<vk::ApplicationInfo> application_info = std::nullopt;
+
+    if (info.has_value()) {
+        application_info = vk::ApplicationInfo(
+            info->application_name.c_str(),
+            info->application_version.to_int(),
+            info->engine_name.c_str(),
+            info->engine_version.to_int(),
+            VK_API_VERSION_1_1
+        );
+    }
 
     vk::InstanceCreateInfo create_instance_info(
         {},
-        &application_info,
+        application_info.has_value() ? &application_info.value() : nullptr,
         layers_c.size(),
         layers_c.data(),
-        required_extensions_c.size(),
-        required_extensions_c.data()
+        extensions_c.size(),
+        extensions_c.data()
     );
 
-    vk::UniqueInstance instance;
+    Instance instance;
 
-    if (constants::kVULKAN_DEBUG) {
-        vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
-            create_instance_info,
-            get_debug_utils_create_info()
-        };
+    LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(create_instance_info)));
 
-        instance = VK_TRY(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>()));
-    } else {
-        instance = VK_TRY(vk::createInstanceUnique(create_instance_info));
+    init_dispatcher(*instance.handle_);
+
+    instance.extensions_ = extensions;
+    instance.layers_ = layers;
+    instance.info_ = info;
+
+    LEAF_AUTO(physical_devices, to_result(instance.handle_->enumeratePhysicalDevices()));
+
+    for (auto physical_device: physical_devices) {
+        auto properties = physical_device.getProperties();
+        auto family_properties = physical_device.getQueueFamilyProperties();
+        auto memory_properties = physical_device.getMemoryProperties();
+        auto available_features = physical_device.getFeatures();
+
+        instance.physical_devices_.emplace_back(
+            physical_device,
+            properties,
+            family_properties,
+            memory_properties,
+            available_features
+        );
     }
 
-    init_dispatcher(*instance);
+    return std::move(instance);
+}
 
-    vk::UniqueDebugUtilsMessengerEXT messenger;
+const std::vector<PhysicalDeviceInfo>& Instance::get_physical_devices() const {
+    return physical_devices_;
+}
 
-    if (constants::kVULKAN_DEBUG) {
-        auto create_info = get_debug_utils_create_info();
-        messenger = VK_TRY(instance->createDebugUtilsMessengerEXTUnique(create_info));
-    }
+vk::Instance& Instance::get_handle() {
+    return handle_.get();
+}
 
-    return InstanceRaw{ std::move(instance), std::move(messenger) };
+PhysicalDeviceInfo::PhysicalDeviceInfo(
+    vk::PhysicalDevice device,
+    vk::PhysicalDeviceProperties properties,
+    std::vector<vk::QueueFamilyProperties> queue_families,
+    vk::PhysicalDeviceMemoryProperties memory,
+    vk::PhysicalDeviceFeatures features
+)
+    : device_(std::move(device))
+    , properties_(std::move(properties))
+    , queue_families_(std::move(queue_families))
+    , memory_(std::move(memory))
+    , features_(std::move(features)) {
+}
+
+void PhysicalDeviceInfo::create_logical_device() {
+//    if ()
 }
 
 }

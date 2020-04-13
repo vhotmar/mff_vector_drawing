@@ -2,7 +2,7 @@
 
 namespace mff::internal::renderer::vulkan {
 
-tl::expected<queue_family_indices, std::string> find_queue_families(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
+queue_family_indices find_queue_families(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
     queue_family_indices indices;
 
     auto queue_families = device.getQueueFamilyProperties();
@@ -14,7 +14,8 @@ tl::expected<queue_family_indices, std::string> find_queue_families(vk::Physical
             indices.graphics_family = i;
         }
 
-        if (VK_TRY(device.getSurfaceSupportKHR(i, surface))) {
+        LEAF_DEFAULT(surface_supported, false, to_result(device.getSurfaceSupportKHR(i, surface)));
+        if (surface_supported) {
             indices.present_family = i;
         }
 

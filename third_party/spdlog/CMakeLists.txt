@@ -16,8 +16,6 @@ if (NOT ${spdlog_POPULATED})
     add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR})
 
     target_include_directories(spdlog PRIVATE $<TARGET_PROPERTY:fmt,INCLUDE_DIRECTORIES>)
-
-
 endif()
 
 file(REMOVE ${spdlog_SOURCE_DIR}/include/spdlog/tweakme.h)

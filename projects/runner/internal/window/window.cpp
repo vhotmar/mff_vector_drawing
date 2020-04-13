@@ -34,7 +34,7 @@ void Window::dispatch(events::Event event) {
     event_loop_->dispatch(event);
 }
 
-tl::expected<vk::UniqueSurfaceKHR, std::string> Window::create_surface(
+boost::leaf::result<vk::UniqueSurfaceKHR> Window::create_surface(
     vk::Instance instance,
     const VkAllocationCallbacks* allocator
 ) {
@@ -43,11 +43,20 @@ tl::expected<vk::UniqueSurfaceKHR, std::string> Window::create_surface(
     auto result = glfwCreateWindowSurface(instance, handle_.get(), allocator, &surface);
 
     if (result != VK_SUCCESS) {
-        return tl::make_unexpected("Can't create a surface");
+        return boost::leaf::new_error(static_cast<vk::Result>(result));
     }
 
     vk::ObjectDestroy<vk::Instance, VULKAN_HPP_DEFAULT_DISPATCHER_TYPE> _deleter(instance);
     return vk::UniqueSurfaceKHR(surface, _deleter);
+}
+
+std::vector<std::string> Window::get_required_extensions() {
+    auto context = window::detail::create_glfw_context();
+
+    unsigned int glfwExtensionCount;
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    return std::vector<std::string>(glfwExtensions, glfwExtensions + glfwExtensionCount);
 }
 
 WindowSize::WindowSize(int width_, int height_)

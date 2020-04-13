@@ -11,3 +11,25 @@
 // otherwise vulkan.hpp fails
 #include <cassert>
 #include <vulkan/vulkan.hpp>
+
+#include "./leaf.h"
+
+namespace boost::leaf {
+
+template <>
+struct is_e_type<vk::Result> : public std::true_type {};
+
+}
+
+namespace mff {
+
+template <typename T>
+boost::leaf::result<T> to_result(vk::ResultValue<T> vk_result) {
+    if (vk_result.result != vk::Result::eSuccess) {
+        return boost::leaf::new_error(vk_result.result);
+    }
+
+    return std::move(vk_result.value);
+}
+
+};

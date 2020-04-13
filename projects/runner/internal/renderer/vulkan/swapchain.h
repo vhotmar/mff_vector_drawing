@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "../../expected.h"
+#include "../../leaf.h"
 #include "../../vulkan.h"
 
 namespace mff::internal::renderer::vulkan {
@@ -14,6 +14,12 @@ struct swapchain_support_details {
     std::vector<vk::PresentModeKHR> present_modes;
 };
 
-tl::expected<swapchain_support_details, std::string> query_swapchain_support(vk::PhysicalDevice device, vk::SurfaceKHR surface);
+boost::leaf::result<swapchain_support_details>
+query_swapchain_support(vk::PhysicalDevice device, vk::SurfaceKHR surface);
+
+class Swapchain {
+public:
+
+};
 
 }

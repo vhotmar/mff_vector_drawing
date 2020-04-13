@@ -8,7 +8,6 @@
 
 #include "../window/context.h"
 #include "../vulkan.h"
-#include "../expected.h"
 
 #include "utils.h"
 

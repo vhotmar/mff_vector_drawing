@@ -20,6 +20,7 @@ target_link_libraries(${PROJECT_NAME}
     glm
     fmt
     vma
+    leaf
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD

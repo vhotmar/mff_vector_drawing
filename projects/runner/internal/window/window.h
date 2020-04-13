@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "../expected.h"
+#include "../leaf.h"
 #include "./events.h"
 #include "./event_loop.h"
 #include "./context.h"
@@ -26,7 +26,10 @@ class Window {
 public:
     Window(std::shared_ptr<detail::GLFWContext> context, detail::glfw_window handle, EventLoop* loop);
 
-    tl::expected<vk::UniqueSurfaceKHR, std::string> create_surface(vk::Instance instance, const VkAllocationCallbacks* allocator);
+    boost::leaf::result<vk::UniqueSurfaceKHR>
+    create_surface(vk::Instance instance, const VkAllocationCallbacks* allocator);
+
+    std::vector<std::string> get_required_extensions();
 
     void dispatch(events::Event event);
 

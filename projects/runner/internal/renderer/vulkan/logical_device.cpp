@@ -15,8 +15,8 @@ std::set<std::string> get_logical_device_required_extensions() {
     return { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 }
 
-tl::expected<DeviceRaw, std::string> create_logical_device(vk::PhysicalDevice physical_device, vk::SurfaceKHR surface) {
-    auto indices = TRY(find_queue_families(physical_device, surface));
+boost::leaf::result<DeviceRaw> create_logical_device(vk::PhysicalDevice physical_device, vk::SurfaceKHR surface) {
+    LEAF_AUTO(indices, find_queue_families(physical_device, surface));
 
     auto priority = 1.0f;
 
@@ -29,14 +29,15 @@ tl::expected<DeviceRaw, std::string> create_logical_device(vk::PhysicalDevice ph
         [&](auto id) {
             return vk::DeviceQueueCreateInfo({}, id, 1, &priority);
         },
-        unique_queue_families);
+        unique_queue_families
+    );
 
     vk::PhysicalDeviceFeatures device_features;
 
     auto layers = get_required_mff_layers();
-    auto layers_c = utils::to_pointer_char_data(layers);
-
     auto extensions = get_logical_device_required_extensions();
+
+    auto layers_c = utils::to_pointer_char_data(layers);
     auto extensions_c = utils::to_pointer_char_data(extensions);
 
     auto device_create_info = vk::DeviceCreateInfo(
@@ -48,7 +49,7 @@ tl::expected<DeviceRaw, std::string> create_logical_device(vk::PhysicalDevice ph
         extensions_c.size(),
         extensions_c.data());
 
-    auto device = VK_TRY(physical_device.createDeviceUnique(device_create_info));
+    LEAF_AUTO(device, to_result(physical_device.createDeviceUnique(device_create_info)));
 
     init_dispatcher(device.get());
 

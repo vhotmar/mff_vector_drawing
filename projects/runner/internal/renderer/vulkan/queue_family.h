@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "../../expected.h"
+#include "../../leaf.h"
 #include "../../vulkan.h"
 
 namespace mff::internal::renderer::vulkan {
@@ -17,6 +17,6 @@ struct queue_family_indices {
     }
 };
 
-tl::expected<queue_family_indices, std::string> find_queue_families(vk::PhysicalDevice device, vk::SurfaceKHR surface);
+queue_family_indices find_queue_families(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 
 }

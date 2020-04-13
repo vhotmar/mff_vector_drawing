@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "../../expected.h"
+#include "../../leaf.h"
 #include "../../vulkan.h"
 
 namespace mff::internal::renderer::vulkan {
@@ -17,6 +17,6 @@ struct DeviceRaw {
     QueueRaw queues;
 };
 
-tl::expected<DeviceRaw, std::string> create_logical_device(vk::PhysicalDevice device, vk::SurfaceKHR surface);
+boost::leaf::result<DeviceRaw> create_logical_device(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 
 }

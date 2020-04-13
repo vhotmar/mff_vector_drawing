@@ -5,6 +5,7 @@
     <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/catch2-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/expected-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/expected-src/cmake/tl-cmake" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-release/_deps/catch2-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/dependencies/Catch2" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/dependencies/expected" vcs="Git" />
   </component>
