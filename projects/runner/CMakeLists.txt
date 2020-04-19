@@ -17,7 +17,8 @@ target_link_libraries(${PROJECT_NAME}
     glfw
     spdlog
     shaderc
-    glm
+    glm # TODO: REMOVE
+    eigen
     fmt
     vma
     leaf

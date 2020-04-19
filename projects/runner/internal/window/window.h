@@ -3,6 +3,8 @@
 #include <optional>
 
 #include "../leaf.h"
+#include "../eigen.h"
+
 #include "./events.h"
 #include "./event_loop.h"
 #include "./context.h"
@@ -26,10 +28,10 @@ class Window {
 public:
     Window(std::shared_ptr<detail::GLFWContext> context, detail::glfw_window handle, EventLoop* loop);
 
-    boost::leaf::result<vk::UniqueSurfaceKHR>
-    create_surface(vk::Instance instance, const VkAllocationCallbacks* allocator);
+    boost::leaf::result<vk::UniqueSurfaceKHR> create_surface(vk::Instance instance);
 
     std::vector<std::string> get_required_extensions();
+    Vector2ui get_inner_size();
 
     void dispatch(events::Event event);
 
@@ -56,7 +58,7 @@ public:
 
     WindowBuilder& with_title(std::string title);
     WindowBuilder& with_size(WindowSize size);
-    std::unique_ptr<Window> build(EventLoop* loop);
+    std::shared_ptr<Window> build(EventLoop* loop);
 
 private:
     WindowSize get_size();

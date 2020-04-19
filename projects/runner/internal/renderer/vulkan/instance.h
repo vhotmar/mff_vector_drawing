@@ -41,24 +41,65 @@ struct ApplicationInfo {
 
 class Instance;
 
-class PhysicalDeviceInfo {
+class PhysicalDevice;
+
+class QueueFamily {
 private:
-    vk::PhysicalDevice device_;
-    vk::PhysicalDeviceProperties properties_;
-    std::vector<vk::QueueFamilyProperties> queue_families_;
-    vk::PhysicalDeviceMemoryProperties memory_;
-    vk::PhysicalDeviceFeatures features_;
+    std::size_t index_;
+    vk::QueueFamilyProperties properties_;
+    std::shared_ptr<PhysicalDevice> physical_device_;
 
 public:
-    PhysicalDeviceInfo(
-        vk::PhysicalDevice device,
-        vk::PhysicalDeviceProperties properties,
-        std::vector<vk::QueueFamilyProperties> queue_families,
-        vk::PhysicalDeviceMemoryProperties memory,
-        vk::PhysicalDeviceFeatures features
+    QueueFamily(
+        std::shared_ptr<PhysicalDevice> physical_device,
+        vk::QueueFamilyProperties properties,
+        std::size_t index
     );
 
-    void create_logical_device();
+    vk::QueueFamilyProperties get_properties() const;
+
+    std::uint32_t get_index() const;
+
+    std::uint32_t get_queues_count() const;
+
+    std::shared_ptr<PhysicalDevice> get_physical_device() const;
+
+    bool supports_graphics() const;
+
+    bool supports_compute() const;
+
+    bool operator==(const QueueFamily& rhs) const;
+};
+
+class PhysicalDevice {
+    friend class Instance;
+
+private:
+    std::shared_ptr<Instance> instance_;
+    vk::PhysicalDevice device_;
+    vk::PhysicalDeviceProperties properties_;
+    std::vector<QueueFamily> queue_families_;
+    vk::PhysicalDeviceMemoryProperties memory_;
+    vk::PhysicalDeviceFeatures features_;
+    std::vector<vk::ExtensionProperties> extensions_;
+
+public:
+    PhysicalDevice(
+        std::shared_ptr<Instance> instance,
+        vk::PhysicalDevice device
+    );
+
+    std::vector<QueueFamily> get_queue_families() const;
+
+    vk::PhysicalDevice get_handle() const;
+
+    vk::PhysicalDeviceType get_type() const;
+
+    const std::vector<vk::ExtensionProperties>& get_extensions() const;
+
+    std::shared_ptr<Instance> get_instance();
+
+    inline bool operator==(const PhysicalDevice& rhs);
 };
 
 class Instance {
@@ -67,19 +108,22 @@ private:
     std::vector<std::string> layers_;
     std::optional<ApplicationInfo> info_;
     vk::UniqueInstance handle_;
-    std::vector<PhysicalDeviceInfo> physical_devices_;
+    vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_;
+    std::vector<std::shared_ptr<PhysicalDevice>> physical_devices_;
 
     Instance() = default;
 
 public:
-    const std::vector<PhysicalDeviceInfo>& get_physical_devices() const;
+    const std::vector<std::shared_ptr<PhysicalDevice>>& get_physical_devices() const;
 
-    vk::Instance& get_handle();
+    const vk::Instance& get_handle() const;
 
-    static boost::leaf::result<Instance> build(
+    const std::vector<std::string>& get_loaded_layers();
+
+    static boost::leaf::result<std::shared_ptr<Instance>> build(
         std::optional<ApplicationInfo> info,
-        const std::vector<std::string>& extensions,
-        const std::vector<std::string>& layers
+        std::vector<std::string> extensions,
+        std::vector<std::string> layers
     );
 };
 

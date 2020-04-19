@@ -34,13 +34,10 @@ void Window::dispatch(events::Event event) {
     event_loop_->dispatch(event);
 }
 
-boost::leaf::result<vk::UniqueSurfaceKHR> Window::create_surface(
-    vk::Instance instance,
-    const VkAllocationCallbacks* allocator
-) {
+boost::leaf::result<vk::UniqueSurfaceKHR> Window::create_surface(vk::Instance instance) {
     VkSurfaceKHR surface;
 
-    auto result = glfwCreateWindowSurface(instance, handle_.get(), allocator, &surface);
+    auto result = glfwCreateWindowSurface(instance, handle_.get(), nullptr, &surface);
 
     if (result != VK_SUCCESS) {
         return boost::leaf::new_error(static_cast<vk::Result>(result));
@@ -57,6 +54,13 @@ std::vector<std::string> Window::get_required_extensions() {
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     return std::vector<std::string>(glfwExtensions, glfwExtensions + glfwExtensionCount);
+}
+
+Vector2ui Window::get_inner_size() {
+    int width;
+    int height;
+    glfwGetFramebufferSize(handle_.get(), &width, &height);
+    return mff::Vector2ui(width, height);
 }
 
 WindowSize::WindowSize(int width_, int height_)
@@ -88,7 +92,7 @@ WindowSize WindowBuilder::get_size() {
     return *size_;
 }
 
-std::unique_ptr<Window> WindowBuilder::build(EventLoop* loop) {
+std::shared_ptr<Window> WindowBuilder::build(EventLoop* loop) {
     auto context = detail::create_glfw_context();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -102,7 +106,7 @@ std::unique_ptr<Window> WindowBuilder::build(EventLoop* loop) {
 
     logger::system->trace("GLFW new window created");
 
-    return std::make_unique<Window>(context, std::move(win), loop);
+    return std::make_shared<Window>(context, std::move(win), loop);
 }
 
 void detail::DestroyGLFWwindow::operator()(GLFWwindow* ptr) {

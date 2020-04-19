@@ -3,56 +3,17 @@
 #include <mff/algorithms.h>
 #include <set>
 #include <string>
+#include <utility>
+#include <utility>
 #include <vector>
 
 #include "../../constants.h"
 #include "../../window/context.h"
 #include "./debug.h"
 #include "./dispatcher.h"
-#include "./layers.h"
 #include "../utils.h"
 
 namespace mff::internal::renderer::vulkan {
-
-std::vector<std::string> get_required_glfw_instance_extensions() {
-    auto context = window::detail::create_glfw_context();
-
-    unsigned int glfwExtensionCount;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    return std::vector<std::string>(glfwExtensions, glfwExtensions + glfwExtensionCount);
-}
-
-std::vector<std::string> get_required_mff_instance_extensions() {
-    std::vector<std::string> validation_extensions = {};
-
-    if (constants::kVULKAN_DEBUG) {
-        validation_extensions = {VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
-            VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
-    }
-
-    std::vector<std::string> extensions = {};
-
-    extensions.insert(
-        std::end(extensions),
-        std::begin(validation_extensions),
-        std::end(validation_extensions)
-    );
-
-    return extensions;
-}
-
-std::set<std::string> get_required_instance_extensions() {
-    auto glfw_extensions = get_required_glfw_instance_extensions();
-    auto mff_extensions = get_required_mff_instance_extensions();
-
-    std::set<std::string> extensions;
-
-    extensions.insert(std::begin(glfw_extensions), std::end(glfw_extensions));
-    extensions.insert(std::begin(mff_extensions), std::end(mff_extensions));
-
-    return extensions;
-}
 
 Version::Version(std::uint8_t maj, std::uint8_t min, std::uint8_t pat)
     : major(maj), minor(min), patch(pat) {
@@ -62,12 +23,25 @@ std::uint32_t Version::to_int() {
     return VK_MAKE_VERSION(major, minor, patch);
 }
 
-boost::leaf::result<Instance> Instance::build(
+boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     std::optional<ApplicationInfo> info,
-    const std::vector<std::string>& extensions,
-    const std::vector<std::string>& layers
+    std::vector<std::string> extensions,
+    std::vector<std::string> layers
 ) {
     init_dispatcher();
+
+    auto add_extension = [&](const std::string& extension) -> bool {
+        if (mff::contains(extensions, extension)) return false;
+
+        extensions.push_back(extension);
+
+        return true;
+    };
+
+    if (constants::kVULKAN_DEBUG) {
+        add_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+        add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
 
     LEAF_AUTO(instance_extensions, to_result(vk::enumerateInstanceExtensionProperties()));
 
@@ -86,6 +60,18 @@ boost::leaf::result<Instance> Instance::build(
                 e_extension_not_found{extension}
             );
         }
+    }
+
+    auto add_layer = [&](const std::string& layer) -> bool {
+        if (mff::contains(layers, layer)) return false;
+
+        layers.push_back(layer);
+
+        return true;
+    };
+
+    if (constants::kVULKAN_DEBUG) {
+        add_layer("VK_LAYER_LUNARG_standard_validation");
     }
 
     LEAF_AUTO(instance_layers, to_result(vk::enumerateInstanceLayerProperties()));
@@ -131,60 +117,138 @@ boost::leaf::result<Instance> Instance::build(
         extensions_c.data()
     );
 
-    Instance instance;
+    struct enable_Instance : public Instance {};
 
-    LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(create_instance_info)));
+    std::shared_ptr<Instance> instance = std::make_shared<enable_Instance>();
 
-    init_dispatcher(*instance.handle_);
+    if (constants::kVULKAN_DEBUG) {
+        vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
+            create_instance_info,
+            get_debug_utils_create_info()
+        };
 
-    instance.extensions_ = extensions;
-    instance.layers_ = layers;
-    instance.info_ = info;
+        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>())));
+    } else {
+        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(create_instance_info)));
+    }
 
-    LEAF_AUTO(physical_devices, to_result(instance.handle_->enumeratePhysicalDevices()));
+    init_dispatcher(instance->handle_.get());
+
+    if (constants::kVULKAN_DEBUG) {
+        auto create_info = get_debug_utils_create_info();
+        LEAF_AUTO_TO(
+            instance->debug_utils_messenger_,
+            to_result(instance->handle_->createDebugUtilsMessengerEXTUnique(create_info)));
+    }
+
+    instance->extensions_ = extensions;
+    instance->layers_ = layers;
+    instance->info_ = info;
+
+    LEAF_AUTO(physical_devices, to_result(instance->handle_->enumeratePhysicalDevices()));
+    instance->physical_devices_.reserve(physical_devices.size());
 
     for (auto physical_device: physical_devices) {
-        auto properties = physical_device.getProperties();
-        auto family_properties = physical_device.getQueueFamilyProperties();
-        auto memory_properties = physical_device.getMemoryProperties();
-        auto available_features = physical_device.getFeatures();
+        auto result = std::make_shared<PhysicalDevice>(instance, physical_device);
+        result->properties_ = physical_device.getProperties();
+        result->memory_ = physical_device.getMemoryProperties();
+        result->features_ = physical_device.getFeatures();
+        LEAF_AUTO_TO(result->extensions_, to_result(physical_device.enumerateDeviceExtensionProperties()));
 
-        instance.physical_devices_.emplace_back(
-            physical_device,
-            properties,
-            family_properties,
-            memory_properties,
-            available_features
+        auto family_properties = physical_device.getQueueFamilyProperties();
+        int index = 0;
+        std::vector<QueueFamily> queue_families = mff::map(
+            [&](auto properties) {
+                return QueueFamily(result, properties, index++);
+            },
+            family_properties
         );
+        result->queue_families_ = std::move(queue_families);
+
+        instance->physical_devices_.push_back(std::move(result));
     }
 
     return std::move(instance);
 }
 
-const std::vector<PhysicalDeviceInfo>& Instance::get_physical_devices() const {
+const std::vector<std::shared_ptr<PhysicalDevice>>& Instance::get_physical_devices() const {
     return physical_devices_;
 }
 
-vk::Instance& Instance::get_handle() {
+const vk::Instance& Instance::get_handle() const {
     return handle_.get();
 }
 
-PhysicalDeviceInfo::PhysicalDeviceInfo(
-    vk::PhysicalDevice device,
-    vk::PhysicalDeviceProperties properties,
-    std::vector<vk::QueueFamilyProperties> queue_families,
-    vk::PhysicalDeviceMemoryProperties memory,
-    vk::PhysicalDeviceFeatures features
-)
-    : device_(std::move(device))
-    , properties_(std::move(properties))
-    , queue_families_(std::move(queue_families))
-    , memory_(std::move(memory))
-    , features_(std::move(features)) {
+const std::vector<std::string>& Instance::get_loaded_layers() {
+    return layers_;
 }
 
-void PhysicalDeviceInfo::create_logical_device() {
-//    if ()
+PhysicalDevice::PhysicalDevice(
+    std::shared_ptr<Instance> instance,
+    vk::PhysicalDevice device
+)
+    : instance_(instance)
+    , device_(device) {
+}
+
+vk::PhysicalDeviceType PhysicalDevice::get_type() const {
+    return properties_.deviceType;
+}
+
+vk::PhysicalDevice PhysicalDevice::get_handle() const {
+    return device_;
+}
+
+std::shared_ptr<Instance> PhysicalDevice::get_instance() {
+    return instance_;
+}
+
+std::vector<QueueFamily> PhysicalDevice::get_queue_families() const {
+    return queue_families_;
+}
+
+bool PhysicalDevice::operator==(const PhysicalDevice& rhs) {
+    return device_ == rhs.device_ && instance_ == rhs.instance_;
+}
+
+const std::vector<vk::ExtensionProperties>& PhysicalDevice::get_extensions() const {
+    return extensions_;
+}
+
+QueueFamily::QueueFamily(
+    std::shared_ptr<PhysicalDevice> physical_device,
+    vk::QueueFamilyProperties properties,
+    std::size_t index
+)
+    : physical_device_(std::move(physical_device)), properties_(std::move(properties)), index_(index) {
+}
+
+std::uint32_t QueueFamily::get_queues_count() const {
+    return properties_.queueCount;
+}
+
+bool QueueFamily::supports_graphics() const {
+    return (bool) (get_properties().queueFlags & vk::QueueFlagBits::eGraphics);
+}
+
+bool QueueFamily::supports_compute() const {
+    return (bool) (get_properties().queueFlags & vk::QueueFlagBits::eCompute);
+}
+
+std::uint32_t QueueFamily::get_index() const {
+    return index_;
+}
+
+std::shared_ptr<PhysicalDevice> QueueFamily::get_physical_device() const {
+    return physical_device_;
+}
+
+vk::QueueFamilyProperties QueueFamily::get_properties() const {
+    return properties_;
+}
+
+bool QueueFamily::operator==(const QueueFamily& rhs) const {
+    return index_ == rhs.index_ && physical_device_ == rhs.physical_device_;
 }
 
 }

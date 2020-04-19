@@ -22,7 +22,7 @@ function(add_package packageName)
 
     message(STATUS "Preparing ${packageName}")
 
-    FetchContent_Declare(${packageName} ${ARGN})
+    FetchContent_Declare(${packageName} ${ARGN} GIT_PROGRESS ON)
 
     FetchContent_GetProperties(${packageName})
 
