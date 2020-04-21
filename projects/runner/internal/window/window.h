@@ -9,7 +9,7 @@
 #include "./event_loop.h"
 #include "./context.h"
 
-namespace mff::internal::window {
+namespace mff::window {
 
 namespace detail {
 

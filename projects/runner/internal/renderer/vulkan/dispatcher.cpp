@@ -4,16 +4,18 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 void init_dispatcher() {
     static std::once_flag flag;
 
-    std::call_once(flag, []() {
-        vk::DynamicLoader dl;
-        auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-        VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
-    });
+    std::call_once(
+        flag, []() {
+            vk::DynamicLoader dl;
+            auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+            VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+        }
+    );
 }
 
 void init_dispatcher(vk::Instance instance) {

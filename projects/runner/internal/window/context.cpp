@@ -1,7 +1,7 @@
 #include "./context.h"
 #include "../../utils/logger.h"
 
-namespace mff::internal::window::detail {
+namespace mff::window::detail {
 
 void error_callback(int error, const char* description) {
     logger::system->error("Error ({0}): \"{1}\"", error, description);

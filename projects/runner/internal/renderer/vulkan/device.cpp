@@ -7,7 +7,7 @@
 #include "../utils.h"
 #include "./dispatcher.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 Device::Device(std::shared_ptr<PhysicalDevice> physical_device)
     : physical_device_(physical_device), instance_(physical_device->get_instance()) {

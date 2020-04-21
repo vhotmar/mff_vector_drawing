@@ -5,7 +5,7 @@
 
 #include "./events.h"
 
-namespace mff::internal::window {
+namespace mff::window {
 
 enum class ExecutionControl {
     Poll,

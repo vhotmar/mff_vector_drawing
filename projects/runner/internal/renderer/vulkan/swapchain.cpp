@@ -5,7 +5,7 @@
 #include <mff/utils.h>
 #include "instance.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 /*boost::leaf::result<swapchain_support_details>
 query_swapchain_support(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
@@ -125,8 +125,10 @@ boost::leaf::result<std::shared_ptr<Surface>> Surface::build(
     std::shared_ptr<window::Window> window,
     std::shared_ptr<Instance> instance
 ) {
-    struct enable_Surface: public Surface {
-        enable_Surface(std::shared_ptr<Instance> inst): Surface(inst) {}
+    struct enable_Surface : public Surface {
+        enable_Surface(std::shared_ptr<Instance> inst)
+            : Surface(inst) {
+        }
     };
 
     std::shared_ptr<Surface> surface = std::make_shared<enable_Surface>(instance);
@@ -136,7 +138,8 @@ boost::leaf::result<std::shared_ptr<Surface>> Surface::build(
     return surface;
 }
 
-boost::leaf::result<Capabilities> Surface::get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device) const {
+boost::leaf::result<Capabilities>
+Surface::get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device) const {
     auto device_handle = physical_device->get_handle();
 
     LEAF_AUTO(capabilities, to_result(device_handle.getSurfaceCapabilitiesKHR(handle_.get())));
@@ -176,7 +179,7 @@ vk::SwapchainKHR Swapchain::get_handle() const {
     return handle_.get();
 }
 
-boost::leaf::result<Swapchain> Swapchain::build(
+boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
     std::shared_ptr<Device> device,
     std::shared_ptr<Surface> surface,
     std::uint32_t num_images,
@@ -269,18 +272,31 @@ boost::leaf::result<Swapchain> Swapchain::build(
         old_swapchain.has_value() ? old_swapchain.value().get_handle() : nullptr
     );
 
-    Swapchain swapchain(device, surface);
+    struct enable_Swapchain : public Swapchain {
+        enable_Swapchain(
+            std::shared_ptr<Device> device,
+            std::shared_ptr<Surface> surface
+        )
+            : Swapchain(std::move(device), std::move(surface)) {
+        }
+    };
+
+    std::shared_ptr<Swapchain> swapchain = std::make_shared<enable_Swapchain>(device, surface);
 
     auto device_handle = device->get_handle();
 
     LEAF_AUTO_TO(
-        swapchain.handle_,
+        swapchain->handle_,
         to_result(device_handle.createSwapchainKHRUnique(swapchain_create_info)));
 
-    LEAF_AUTO(image_handles, to_result(device_handle.getSwapchainImagesKHR(swapchain.handle_.get())));
-
+    LEAF_AUTO(image_handles, to_result(device_handle.getSwapchainImagesKHR(swapchain->handle_.get())));
+    swapchain->format_ = format;
 
     return swapchain;
+}
+
+vk::Format Swapchain::get_format() const {
+    return format_;
 }
 
 Capabilities::Capabilities(

@@ -2,7 +2,7 @@
 
 #include "../glfw.h"
 
-namespace mff::internal::window {
+namespace mff::window {
 
 EventLoop::EventLoop() = default;
 

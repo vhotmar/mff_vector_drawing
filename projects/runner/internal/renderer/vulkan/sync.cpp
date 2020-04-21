@@ -2,7 +2,7 @@
 
 #include <mff/algorithms.h>
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 SharingMode get_sharing_mode(const std::vector<QueueFamily>& queue_families) {
     std::vector<std::uint32_t> uniq_families; // = mff::map([](auto family) { return family.get_index(); }, queue_families);

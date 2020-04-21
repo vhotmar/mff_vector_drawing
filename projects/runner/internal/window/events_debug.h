@@ -2,17 +2,17 @@
 
 #include "./events.h"
 
-namespace mff::internal::window::events {
+namespace mff::window::events {
 
 namespace window {
 
-template<typename TOStream>
-TOStream &operator<<(TOStream &os, const CloseRequested &ev) {
+template <typename TOStream>
+TOStream& operator<<(TOStream& os, const CloseRequested& ev) {
     os << "CloseRequested()";
     return os;
 }
 
-template<typename TOStream>
+template <typename TOStream>
 TOStream &operator<<(TOStream &os, const Resized &ev) {
     os << "Resized()";
     return os;

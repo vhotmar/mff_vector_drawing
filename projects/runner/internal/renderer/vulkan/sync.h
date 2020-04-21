@@ -5,7 +5,7 @@
 #include "../../vulkan.h"
 #include "./instance.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 struct ExclusiveSharingMode {};
 struct ConcurrentSharingMode {

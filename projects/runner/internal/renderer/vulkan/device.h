@@ -5,7 +5,7 @@
 
 #include "./instance.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 class Device;
 
@@ -59,6 +59,6 @@ public:
 namespace boost::leaf {
 
 template <>
-struct is_e_type<mff::internal::renderer::vulkan::create_device_error_code> : public std::true_type {};
+struct is_e_type<mff::vulkan::create_device_error_code> : public std::true_type {};
 
 }

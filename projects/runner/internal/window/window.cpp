@@ -4,7 +4,7 @@
 
 #include "../../utils/logger.h"
 
-namespace mff::internal::window {
+namespace mff::window {
 
 Window::Window(std::shared_ptr<detail::GLFWContext> context, detail::glfw_window handle, EventLoop* loop)
     : context_(std::move(context)), handle_(std::move(handle)), event_loop_(loop) {

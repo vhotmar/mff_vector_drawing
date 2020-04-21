@@ -4,7 +4,7 @@
 
 #include "../../utils/utils.h"
 
-namespace mff::internal::window::events {
+namespace mff::window::events {
 
 namespace window {
 

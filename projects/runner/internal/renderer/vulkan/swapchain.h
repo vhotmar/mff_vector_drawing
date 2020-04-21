@@ -11,7 +11,7 @@
 #include "../../window/window.h"
 #include "./sync.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 class Capabilities {
 public:
@@ -79,16 +79,19 @@ private:
     vk::UniqueSwapchainKHR handle_;
     std::shared_ptr<Device> device_;
     std::shared_ptr<Surface> surface_;
+    vk::Format format_;
 
-public:
     Swapchain(
         std::shared_ptr<Device> device,
         std::shared_ptr<Surface> surface
     );
 
+public:
     vk::SwapchainKHR get_handle() const;
 
-    static boost::leaf::result<Swapchain> build(
+    vk::Format get_format() const;
+
+    static boost::leaf::result<std::shared_ptr<Swapchain>> build(
         std::shared_ptr<Device> device,
         std::shared_ptr<Surface> surface,
         std::uint32_t num_images,
@@ -111,6 +114,6 @@ public:
 namespace boost::leaf {
 
 template <>
-struct is_e_type<mff::internal::renderer::vulkan::create_swapchain_error_code> : public std::true_type {};
+struct is_e_type<mff::vulkan::create_swapchain_error_code> : public std::true_type {};
 
 }

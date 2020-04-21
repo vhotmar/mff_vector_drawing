@@ -9,7 +9,9 @@
 #include "./internal/window/event_loop.h"
 #include "./internal/window/window.h"
 #include "./utils/logger.h"
+#include "internal/renderer/vulkan/render_pass.h"
 
+#include <boost/hana.hpp>
 #include <vk_mem_alloc.h>
 
 /*std::vector<std::string> get_required_glfw_instance_extensions() {
@@ -53,8 +55,8 @@ std::set<std::string> get_required_instance_extensions() {
 }*/
 
 struct QueueFamilyIndices {
-    std::optional<mff::internal::renderer::vulkan::QueueFamily> graphics_family;
-    std::optional<mff::internal::renderer::vulkan::QueueFamily> present_family;
+    std::optional<mff::vulkan::QueueFamily> graphics_family;
+    std::optional<mff::vulkan::QueueFamily> present_family;
 
     bool is_complete() {
         return graphics_family.has_value() && present_family.has_value();
@@ -62,8 +64,8 @@ struct QueueFamilyIndices {
 };
 
 QueueFamilyIndices find_queue_families(
-    const std::shared_ptr<mff::internal::renderer::vulkan::PhysicalDevice>& physical_device,
-    const std::shared_ptr<mff::internal::renderer::vulkan::Surface>& surface
+    const std::shared_ptr<mff::vulkan::PhysicalDevice>& physical_device,
+    const std::shared_ptr<mff::vulkan::Surface>& surface
 ) {
     QueueFamilyIndices indices;
 
@@ -87,8 +89,8 @@ QueueFamilyIndices find_queue_families(
 }
 
 bool is_device_suitable(
-    const std::shared_ptr<mff::internal::renderer::vulkan::PhysicalDevice>& physical_device,
-    const std::shared_ptr<mff::internal::renderer::vulkan::Surface>& surface,
+    const std::shared_ptr<mff::vulkan::PhysicalDevice>& physical_device,
+    const std::shared_ptr<mff::vulkan::Surface>& surface,
     const std::vector<std::string>& required_extensions
 ) {
     bool is_discrete = physical_device->get_type() == vk::PhysicalDeviceType::eDiscreteGpu;
@@ -125,7 +127,7 @@ bool is_device_suitable(
         && swapchain_adequate;
 }
 
-vk::SurfaceFormatKHR choose_swap_surface_format(const mff::internal::renderer::vulkan::Capabilities& capabilities) {
+vk::SurfaceFormatKHR choose_swap_surface_format(const mff::vulkan::Capabilities& capabilities) {
     for (const auto& available_format : capabilities.supported_formats) {
         if (available_format.format == vk::Format::eB8G8R8A8Srgb
             && available_format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -136,7 +138,7 @@ vk::SurfaceFormatKHR choose_swap_surface_format(const mff::internal::renderer::v
     return capabilities.supported_formats.front();
 }
 
-vk::PresentModeKHR choose_swap_present_mode(const mff::internal::renderer::vulkan::Capabilities& capabilities) {
+vk::PresentModeKHR choose_swap_present_mode(const mff::vulkan::Capabilities& capabilities) {
     for (const auto& available_present_mode : capabilities.present_modes) {
         if (available_present_mode == vk::PresentModeKHR::eMailbox) {
             return available_present_mode;
@@ -147,7 +149,7 @@ vk::PresentModeKHR choose_swap_present_mode(const mff::internal::renderer::vulka
 }
 
 mff::Vector2ui choose_swap_extent(
-    const mff::internal::renderer::vulkan::Capabilities& capabilities,
+    const mff::vulkan::Capabilities& capabilities,
     mff::Vector2ui actual_extent
 ) {
     if (capabilities.current_extent) {
@@ -161,29 +163,35 @@ mff::Vector2ui choose_swap_extent(
 }
 
 boost::leaf::result<void> run() {
-    namespace mwin = mff::internal::window;
-    namespace vulkan = mff::internal::renderer::vulkan;
+    mff::window::EventLoop event_loop;
 
-    mwin::EventLoop event_loop;
-
-    auto window = mwin::WindowBuilder()
+    auto window = mff::window::WindowBuilder()
         .with_size({400, 400})
         .with_title("My app")
         .build(&event_loop);
 
-    LEAF_AUTO(instance, vulkan::Instance::build(std::nullopt, window->get_required_extensions(), {}));
-    LEAF_AUTO(surface, vulkan::Surface::build(window, instance));
+    LEAF_AUTO(instance, mff::vulkan::Instance::build(std::nullopt, window->get_required_extensions(), {}));
+    LEAF_AUTO(surface, mff::vulkan::Surface::build(window, instance));
     auto physical_device = mff::find_if(
         instance->get_physical_devices(),
         [&](auto device) { return is_device_suitable(device, surface, {}); }
     ).value();
-    auto indices = find_queue_families(*physical_device, surface);
-    std::vector<vulkan::QueueFamily> queue_infos{indices.graphics_family.value(), indices.present_family.value()};
-    std::vector<std::string> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    LEAF_AUTO(device_result, vulkan::Device::build(*physical_device, queue_infos, extensions));
-    auto[device, queues] = std::move(device_result);
 
-    {
+    auto queue_infos = [&]() {
+        auto indices = find_queue_families(*physical_device, surface);
+        return std::vector<mff::vulkan::QueueFamily>{indices.graphics_family.value(), indices.present_family.value()};
+    }();
+
+    auto build_device = [&]() {
+        std::vector<std::string> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        return mff::vulkan::Device::build(*physical_device, queue_infos, extensions);
+    };
+
+    LEAF_AUTO(device_result, build_device());
+    auto device = std::move(std::get<0>(device_result));
+    auto queues = std::move(std::get<1>(device_result));
+
+    auto build_swapchain = [&]() {
         auto capabilities = surface->get_capabilities(*physical_device).value();
 
         auto surface_format = choose_swap_surface_format(capabilities);
@@ -196,37 +204,54 @@ boost::leaf::result<void> run() {
             image_count = capabilities.max_image_count.value();
         }
 
-        LEAF_AUTO(
-            swapchain_result,
-            vulkan::Swapchain::build(
-                device,
-                surface,
-                image_count,
-                surface_format.format,
-                extent,
+        return mff::vulkan::Swapchain::build(
+            device,
+            surface,
+            image_count,
+            surface_format.format,
+            extent,
+            1,
+            capabilities.supported_usage_flags | vk::ImageUsageFlags(vk::ImageUsageFlagBits::eColorAttachment),
+            mff::vulkan::get_sharing_mode(queue_infos),
+            capabilities.current_transform,
+            vk::CompositeAlphaFlagBitsKHR::eOpaque,
+            present_mode,
+            true,
+            surface_format.colorSpace
+        );
+    };
+
+    LEAF_AUTO(swapchain_result, build_swapchain());
+    auto swapchain = std::move(swapchain_result);
+
+    LEAF_AUTO(
+        render_pass,
+        mff::vulkan::RenderPassBuilder()
+            .add_attachment(
+                "color",
+                vk::AttachmentLoadOp::eClear,
+                vk::AttachmentStoreOp::eStore,
+                swapchain->get_format(),
                 1,
-                capabilities.supported_usage_flags | vk::ImageUsageFlags(vk::ImageUsageFlagBits::eColorAttachment),
-                vulkan::get_sharing_mode(queue_infos),
-                capabilities.current_transform,
-                vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                present_mode,
-                true,
-                surface_format.colorSpace
-            ));
-    }
+                vk::ImageLayout::eUndefined,
+                vk::ImageLayout::ePresentSrcKHR
+            )
+            .add_pass({"color"})
+            .build(device)
+    );
 
     //instance.get_physical_devices()[0].
 
     event_loop.run(
         [&](auto event) {
-            if (auto window_event = std::get_if<mwin::events::WindowEvent>(&event)) {
-                if (std::holds_alternative<mwin::events::window::CloseRequested>(window_event->event)) {
+            if (auto window_event = std::get_if<mff::window::events::WindowEvent>(&event)) {
+                if (std::holds_alternative<mff::window::events::window::CloseRequested>(window_event->event)) {
                     logger::main->info("Quitting application");
-                    return mwin::ExecutionControl::Terminate;
+                    return mff::window::ExecutionControl::Terminate;
                 }
             }
 
-            return mwin::ExecutionControl::Wait;
+            return mff::window::ExecutionControl::Wait;
         }
     );
 

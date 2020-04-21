@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace mff::internal::renderer::utils {
+namespace mff::utils {
 
 template <typename TContainer>
 std::vector<const char*> to_pointer_char_data(const TContainer& data) {

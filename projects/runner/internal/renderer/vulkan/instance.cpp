@@ -13,7 +13,7 @@
 #include "./dispatcher.h"
 #include "../utils.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 Version::Version(std::uint8_t maj, std::uint8_t min, std::uint8_t pat)
     : major(maj), minor(min), patch(pat) {

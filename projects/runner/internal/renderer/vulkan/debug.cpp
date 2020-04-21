@@ -2,7 +2,7 @@
 
 #include "../../../utils/logger.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 vk::DebugUtilsMessengerCreateInfoEXT get_debug_utils_create_info() {
     return vk::DebugUtilsMessengerCreateInfoEXT(

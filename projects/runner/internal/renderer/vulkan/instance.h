@@ -5,7 +5,7 @@
 #include "../../leaf.h"
 #include "../../vulkan.h"
 
-namespace mff::internal::renderer::vulkan {
+namespace mff::vulkan {
 
 enum class create_instance_error_code {
     extension_not_found_error,
@@ -132,6 +132,6 @@ public:
 namespace boost::leaf {
 
 template <>
-struct is_e_type<mff::internal::renderer::vulkan::create_instance_error_code> : public std::true_type {};
+struct is_e_type<mff::vulkan::create_instance_error_code> : public std::true_type {};
 
 }
