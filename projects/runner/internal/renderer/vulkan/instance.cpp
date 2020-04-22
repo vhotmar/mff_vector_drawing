@@ -1,6 +1,8 @@
 #include "instance.h"
 
 #include <mff/algorithms.h>
+#include <mff/optional.h>
+
 #include <set>
 #include <string>
 #include <utility>
@@ -8,7 +10,6 @@
 #include <vector>
 
 #include "../../constants.h"
-#include "../../window/context.h"
 #include "./debug.h"
 #include "./dispatcher.h"
 #include "../utils.h"
@@ -19,7 +20,7 @@ Version::Version(std::uint8_t maj, std::uint8_t min, std::uint8_t pat)
     : major(maj), minor(min), patch(pat) {
 }
 
-std::uint32_t Version::to_int() {
+std::uint32_t Version::to_int() const {
     return VK_MAKE_VERSION(major, minor, patch);
 }
 
@@ -28,10 +29,24 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     std::vector<std::string> extensions,
     std::vector<std::string> layers
 ) {
+    // we need to initialize the dispatcher to call vulkan functions
     init_dispatcher();
 
+    // get supported instance extensions
+    LEAF_AUTO(instance_extensions, to_result(vk::enumerateInstanceExtensionProperties()));
+
+    // check whether extension exists in instance
+    auto has_extension = [&](std::string extension) -> bool {
+        return mff::contains_if(
+            instance_extensions,
+            [&](auto item) { return item.extensionName == extension; }
+        );
+    };
+
+    // add extension and returns true if is available / we are already requiring it
     auto add_extension = [&](const std::string& extension) -> bool {
-        if (mff::contains(extensions, extension)) return false;
+        if (mff::contains(extensions, extension)) return true;
+        if (!has_extension(extension)) return false;
 
         extensions.push_back(extension);
 
@@ -39,18 +54,16 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     };
 
     if (constants::kVULKAN_DEBUG) {
-        add_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-        add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        bool has_debug_extension = false;
+
+        has_debug_extension = add_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME) || has_debug_extension;
+        has_debug_extension = add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) || has_debug_extension;
+
+        if (!has_debug_extension) {
+            // we are in debug but extension not found
+            return boost::leaf::new_error(create_instance_error_code::debug_extension_not_found);
+        }
     }
-
-    LEAF_AUTO(instance_extensions, to_result(vk::enumerateInstanceExtensionProperties()));
-
-    auto has_extension = [&](std::string extension) -> bool {
-        return mff::contains_if(
-            instance_extensions,
-            [&](auto item) { return item.extensionName == extension; }
-        );
-    };
 
     // check whether we can use the extensions
     for (const auto& extension: extensions) {
@@ -62,8 +75,21 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
         }
     }
 
+    // get supported instance layers
+    LEAF_AUTO(instance_layers, to_result(vk::enumerateInstanceLayerProperties()));
+
+    // check if is layer supported
+    auto has_layer = [&](std::string layer) -> bool {
+        return mff::contains_if(
+            instance_layers,
+            [&](auto item) { return item.layerName == layer; }
+        );
+    };
+
+    // add layer and return true if is layer required by user or supported by instance
     auto add_layer = [&](const std::string& layer) -> bool {
-        if (mff::contains(layers, layer)) return false;
+        if (mff::contains(layers, layer)) return true;
+        if (!has_layer(layer)) return false;
 
         layers.push_back(layer);
 
@@ -71,17 +97,15 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     };
 
     if (constants::kVULKAN_DEBUG) {
-        add_layer("VK_LAYER_LUNARG_standard_validation");
+        bool has_debug_layer = false;
+
+        has_debug_layer = has_debug_layer || add_layer("VK_LAYER_LUNARG_standard_validation");
+
+        if (!has_debug_layer) {
+            // we are in debug but debug layer not found
+            return boost::leaf::new_error(create_instance_error_code::debug_layer_not_found);
+        }
     }
-
-    LEAF_AUTO(instance_layers, to_result(vk::enumerateInstanceLayerProperties()));
-
-    auto has_layer = [&](std::string layer) -> bool {
-        return mff::contains_if(
-            instance_layers,
-            [&](auto item) { return item.layerName == layer; }
-        );
-    };
 
     // check whether we can use the layers
     for (const auto& layer: layers) {
@@ -93,19 +117,14 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
         }
     }
 
+    // vulkan needs strings as utf-8 char pointers
     auto extensions_c = utils::to_pointer_char_data(extensions);
     auto layers_c = utils::to_pointer_char_data(layers);
 
     std::optional<vk::ApplicationInfo> application_info = std::nullopt;
 
     if (info.has_value()) {
-        application_info = vk::ApplicationInfo(
-            info->application_name.c_str(),
-            info->application_version.to_int(),
-            info->engine_name.c_str(),
-            info->engine_version.to_int(),
-            VK_API_VERSION_1_1
-        );
+        application_info = info->to_vulkan();
     }
 
     vk::InstanceCreateInfo create_instance_info(
@@ -117,6 +136,7 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
         extensions_c.data()
     );
 
+    // we need this so std::make_shared works
     struct enable_Instance : public Instance {};
 
     std::shared_ptr<Instance> instance = std::make_shared<enable_Instance>();
@@ -132,6 +152,7 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
         LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(create_instance_info)));
     }
 
+    // add instance functions to dispatcher
     init_dispatcher(instance->handle_.get());
 
     if (constants::kVULKAN_DEBUG) {
@@ -145,25 +166,37 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     instance->layers_ = layers;
     instance->info_ = info;
 
+    // list all physical devices
     LEAF_AUTO(physical_devices, to_result(instance->handle_->enumeratePhysicalDevices()));
     instance->physical_devices_.reserve(physical_devices.size());
 
+    // initialize physical devices
     for (auto physical_device: physical_devices) {
-        auto result = std::make_shared<PhysicalDevice>(instance, physical_device);
+        // we need this so std::make_shared works
+        struct enable_PhysicalDevice : PhysicalDevice {};
+        auto result = std::make_shared<enable_PhysicalDevice>();
+
+        result->instance_ = instance;
+        result->device_ = physical_device;
         result->properties_ = physical_device.getProperties();
         result->memory_ = physical_device.getMemoryProperties();
         result->features_ = physical_device.getFeatures();
+
         LEAF_AUTO_TO(result->extensions_, to_result(physical_device.enumerateDeviceExtensionProperties()));
 
         auto family_properties = physical_device.getQueueFamilyProperties();
+        result->queue_families_.reserve(family_properties.size());
+
         int index = 0;
-        std::vector<QueueFamily> queue_families = mff::map(
-            [&](auto properties) {
-                return QueueFamily(result, properties, index++);
-            },
-            family_properties
-        );
-        result->queue_families_ = std::move(queue_families);
+        for (const auto& properties: family_properties) {
+            QueueFamily family;
+
+            family.physical_device_ = result;
+            family.properties_ = properties;
+            family.index_ = index++;
+
+            result->queue_families_.push_back(family);
+        }
 
         instance->physical_devices_.push_back(std::move(result));
     }
@@ -181,14 +214,6 @@ const vk::Instance& Instance::get_handle() const {
 
 const std::vector<std::string>& Instance::get_loaded_layers() {
     return layers_;
-}
-
-PhysicalDevice::PhysicalDevice(
-    std::shared_ptr<Instance> instance,
-    vk::PhysicalDevice device
-)
-    : instance_(instance)
-    , device_(device) {
 }
 
 vk::PhysicalDeviceType PhysicalDevice::get_type() const {
@@ -215,24 +240,12 @@ const std::vector<vk::ExtensionProperties>& PhysicalDevice::get_extensions() con
     return extensions_;
 }
 
-QueueFamily::QueueFamily(
-    std::shared_ptr<PhysicalDevice> physical_device,
-    vk::QueueFamilyProperties properties,
-    std::size_t index
-)
-    : physical_device_(std::move(physical_device)), properties_(std::move(properties)), index_(index) {
-}
-
 std::uint32_t QueueFamily::get_queues_count() const {
     return properties_.queueCount;
 }
 
 bool QueueFamily::supports_graphics() const {
-    return (bool) (get_properties().queueFlags & vk::QueueFlagBits::eGraphics);
-}
-
-bool QueueFamily::supports_compute() const {
-    return (bool) (get_properties().queueFlags & vk::QueueFlagBits::eCompute);
+    return (bool) (properties_.queueFlags & vk::QueueFlagBits::eGraphics);
 }
 
 std::uint32_t QueueFamily::get_index() const {
@@ -243,12 +256,28 @@ std::shared_ptr<PhysicalDevice> QueueFamily::get_physical_device() const {
     return physical_device_;
 }
 
-vk::QueueFamilyProperties QueueFamily::get_properties() const {
-    return properties_;
-}
-
 bool QueueFamily::operator==(const QueueFamily& rhs) const {
     return index_ == rhs.index_ && physical_device_ == rhs.physical_device_;
+}
+
+vk::ApplicationInfo ApplicationInfo::to_vulkan() {
+    auto get_ptr = [](const std::optional<std::string>& data) -> const char* {
+        if (data.has_value()) return data->c_str();
+        return nullptr;
+    };
+
+    auto get_version = [](const std::optional<Version>& version) -> std::uint32_t {
+        if (version.has_value()) return version->to_int();
+        return 0;
+    };
+
+    return vk::ApplicationInfo(
+        get_ptr(application_name),
+        get_version(application_version),
+        get_ptr(engine_name),
+        get_version(engine_version),
+        VK_API_VERSION_1_1
+    );
 }
 
 }

@@ -7,20 +7,25 @@
 
 namespace mff::vulkan {
 
+// Forward definitions
 class Device;
 
+/**
+ * Represent Queue where commands are executed. In specification you are grabbing individual
+ * queues, but we will take all queues for given family and then use strategy like round-robin
+ * to use them.
+ *
+ * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#devsandqueues-queues
+ */
 class Queue {
 private:
     std::vector<vk::Queue> queues_;
     std::shared_ptr<Device> device_;
     QueueFamily queue_family_;
 
-public:
-    Queue(
-        std::shared_ptr<Device> device,
-        QueueFamily queue_family,
-        std::vector<vk::Queue> queues
-    );
+    Queue() = default;
+
+    friend class Device;
 };
 
 enum class create_device_error_code {
@@ -28,6 +33,12 @@ enum class create_device_error_code {
     too_many_queues_for_family_error
 };
 
+/**
+ * Represents Vulkan context specific for instance and physical device.
+ *
+ * Note: ignoring groups for physical devices now
+ * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#devsandqueues-devices
+ */
 class Device {
 private:
     std::shared_ptr<Instance> instance_;
@@ -36,17 +47,38 @@ private:
     std::vector<std::string> layers_;
     std::vector<std::string> extensions_;
 
-    Device(std::shared_ptr<PhysicalDevice> physical_device);
+    Device() = default;
 
 public:
+    /**
+     * @return corresponding physical device
+     */
     std::shared_ptr<PhysicalDevice> get_physical_device() const;
 
+    /**
+     * @return layers loaded for this device
+     */
     const std::vector<std::string>& get_layers() const;
 
+    /**
+     * @return extensions loaded for this device
+     */
     const std::vector<std::string>& get_extensions() const;
 
+    /**
+     * @return concrete vulkan Device
+     */
     vk::Device get_handle() const;
 
+    /**
+     * Builds new vulkan Device for specified PhysicalDevice.
+     * @param physical_device PhysicalDevice on which to create the Device
+     * @param queue_families Vector of QueueFamily for which we will create corresponding Queue
+     *                       objects. Ignoring priorities because there is no guarantee by
+     *                       specification that they will be used.
+     * @param extensions A list of vulkan extensions to enable for new Device
+     * @return
+     */
     static boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> build(
         const std::shared_ptr<PhysicalDevice>& physical_device,
         const std::vector<QueueFamily>& queue_families,

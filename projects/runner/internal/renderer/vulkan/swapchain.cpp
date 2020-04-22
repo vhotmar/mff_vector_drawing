@@ -3,112 +3,8 @@
 #include <utility>
 #include <mff/algorithms.h>
 #include <mff/utils.h>
-#include "instance.h"
 
 namespace mff::vulkan {
-
-/*boost::leaf::result<swapchain_support_details>
-query_swapchain_support(vk::PhysicalDevice device, vk::SurfaceKHR surface) {
-    swapchain_support_details details;
-
-    LEAF_AUTO_TO(details.capabilities, to_result(device.getSurfaceCapabilitiesKHR(surface)));
-    LEAF_AUTO_TO(details.formats, to_result(device.getSurfaceFormatsKHR(surface)));
-    LEAF_AUTO_TO(details.present_modes, to_result(device.getSurfacePresentModesKHR(surface)));
-
-    return details;
-}
-
-vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& available_formats) {
-    auto is_suitable = [](vk::SurfaceFormatKHR format) -> bool {
-        return format.format == vk::Format::eB8G8R8A8Srgb
-            && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
-    };
-
-    for (const auto& available_format : available_formats) {
-        if (is_suitable(available_format)) {
-            return available_format;
-        }
-    }
-
-    return available_formats[0];
-}
-
-vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& available_present_modes) {
-    for (const auto& available_present_mode : available_present_modes) {
-        if (available_present_mode == vk::PresentModeKHR::eMailbox) {
-            return available_present_mode;
-        }
-    }
-
-    return available_present_modes[0];
-}
-
-vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities, vk::Extent2D actual_extent) {
-    if (capabilities.currentExtent.width != UINT32_MAX) {
-        return capabilities.currentExtent;
-    } else {
-        vk::Extent2D result_extent(actual_extent);
-
-        result_extent.width = std::max(
-            capabilities.minImageExtent.width,
-            std::min(capabilities.maxImageExtent.width, actual_extent.width));
-        result_extent.height = std::max(
-            capabilities.minImageExtent.height,
-            std::min(capabilities.maxImageExtent.height, actual_extent.height));
-
-        return result_extent;
-    }
-}
-
-boost::leaf::result<void> create_swapchain(vk::PhysicalDevice physical_device, vk::SurfaceKHR surface) {
-    LEAF_AUTO(swapchain_support, query_swapchain_support(physical_device, surface));
-
-    auto surface_format = choose_swap_surface_format(swapchain_support.formats);
-    auto present_mode = choose_swap_present_mode(swapchain_support.present_modes);
-    auto extent = choose_swap_extent(swapchain_support.capabilities, window_->framebuffer_extent());
-
-    auto image_count = swapchain_support.capabilities.minImageCount + 1;
-
-    if (swapchain_support.capabilities.maxImageCount > 0
-        && image_count > swapchain_support.capabilities.maxImageCount) {
-        image_count = swapchain_support.capabilities.maxImageCount;
-    }
-
-    LEAF_AUTO(indices, find_queue_families(physical_device, surface));
-    std::vector<uint32_t> queue_family_indices = {*indices.graphics_family, *indices.present_family};
-    bool different_queues = indices.present_family != indices.graphics_family;
-
-    vk::SwapchainCreateInfoKHR swapchain_create_info(
-        {},
-        surface,
-        image_count,
-        surface_format.format,
-        surface_format.colorSpace,
-        extent,
-        1,
-        vk::ImageUsageFlagBits::eColorAttachment,
-        different_queues ? vk::SharingMode::eConcurrent
-                         : vk::SharingMode::eExclusive, // TODO: check how to use only Concurrent
-        different_queues ? 2 : 0,
-        different_queues ? queue_family_indices.data() : nullptr,
-        swapchain_support.capabilities.currentTransform,
-        vk::CompositeAlphaFlagBitsKHR::eOpaque,
-        present_mode,
-        {},
-        *swapchain_
-    );
-
-    swapchain_ = VK_TRY(device_->createSwapchainKHRUnique(swapchain_create_info));
-    swapchain_images_ = VK_TRY(device_->getSwapchainImagesKHR(*swapchain_));
-    swapchain_image_format_ = surface_format.format;
-    swapchain_extent_ = extent;
-
-    return {};
-}*/
-
-Surface::Surface(std::shared_ptr<Instance> instance)
-    : instance_(instance) {
-}
 
 bool Surface::is_supported(const QueueFamily& queue_family) const {
     auto physical_device = queue_family.get_physical_device()->get_handle();
@@ -125,14 +21,10 @@ boost::leaf::result<std::shared_ptr<Surface>> Surface::build(
     std::shared_ptr<window::Window> window,
     std::shared_ptr<Instance> instance
 ) {
-    struct enable_Surface : public Surface {
-        enable_Surface(std::shared_ptr<Instance> inst)
-            : Surface(inst) {
-        }
-    };
+    struct enable_Surface : public Surface {};
+    std::shared_ptr<Surface> surface = std::make_shared<enable_Surface>();
 
-    std::shared_ptr<Surface> surface = std::make_shared<enable_Surface>(instance);
-
+    surface->instance_ = instance;
     LEAF_AUTO_TO(surface->handle_, window->create_surface(instance->get_handle()));
 
     return surface;
@@ -149,7 +41,8 @@ Surface::get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device
     return Capabilities(
         capabilities.minImageCount,
         capabilities.maxImageCount == 0 ? std::nullopt : std::make_optional(capabilities.maxImageCount),
-        capabilities.currentExtent.width == UINT32_MAX && capabilities.currentExtent.height == UINT32_MAX
+        capabilities.currentExtent.width == std::numeric_limits<std::uint32_t>::max()
+            && capabilities.currentExtent.height == std::numeric_limits<std::uint32_t>::max()
         ? std::nullopt
         : std::make_optional(Vector2ui(capabilities.currentExtent.width, capabilities.currentExtent.height)),
         Vector2ui(capabilities.minImageExtent.width, capabilities.minImageExtent.height),
@@ -166,13 +59,6 @@ Surface::get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device
 
 vk::SurfaceKHR Surface::get_handle() const {
     return handle_.get();
-}
-
-Swapchain::Swapchain(
-    std::shared_ptr<Device> device,
-    std::shared_ptr<Surface> surface
-)
-    : device_(device), surface_(surface) {
 }
 
 vk::SwapchainKHR Swapchain::get_handle() const {
@@ -195,6 +81,8 @@ boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
     vk::ColorSpaceKHR color_space,
     std::optional<Swapchain> old_swapchain
 ) {
+    // TODO: enable chcking only in debug mode
+    // at first we will nsure that the options given by user are correct
     LEAF_AUTO(capabilities, surface->get_capabilities(device->get_physical_device()));
 
     if (num_images < capabilities.min_image_count)
@@ -225,7 +113,11 @@ boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
 
         dimensions_to_use = val;
     } else {
-        dimensions_to_use = capabilities.current_extent.value(); // TODO: should use something like LEAF_OPTIONAL_TO
+        if (!capabilities.current_extent.has_value()) {
+            return boost::leaf::new_error(create_swapchain_error_code::unspecified_dimensions);
+        }
+
+        dimensions_to_use = capabilities.current_extent.value();
     }
 
     if (layers < 1 || layers > capabilities.max_image_array_layers) {
@@ -236,15 +128,33 @@ boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
         return boost::leaf::new_error(create_swapchain_error_code::unsupported_usage_flags);
     }
 
+    if ((transform & capabilities.supported_transforms) != transform) {
+        return boost::leaf::new_error(create_swapchain_error_code::unsupported_surface_transform);
+    }
+
+    if ((alpha & capabilities.supported_composite_alpha) != alpha) {
+        return boost::leaf::new_error(create_swapchain_error_code::unsupported_composite_alpha);
+    }
+
+    if (!mff::contains(capabilities.present_modes, mode)) {
+        return boost::leaf::new_error(create_swapchain_error_code::unsupported_present_mode);
+    }
+
     if (!mff::contains(device->get_extensions(), VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
-        return boost::leaf::new_error(create_swapchain_error_code::missing_extension_khr_swapchin);
+        return boost::leaf::new_error(create_swapchain_error_code::missing_extension_khr_swapchain);
     }
 
     using sh_info = std::tuple<vk::SharingMode, std::uint32_t, std::uint32_t*>;
     auto[sh_mode, sh_count, sh_indices] = std::visit(
         overloaded{
-            [](ExclusiveSharingMode e) -> sh_info { return std::make_tuple(vk::SharingMode::eExclusive, 0, nullptr); },
-            [](ConcurrentSharingMode c) -> sh_info {
+            [](SharingMode_::Exclusive e) -> sh_info {
+                return std::make_tuple(
+                    vk::SharingMode::eExclusive,
+                    0,
+                    nullptr
+                );
+            },
+            [](SharingMode_::Concurrent c) -> sh_info {
                 return std::make_tuple(
                     vk::SharingMode::eConcurrent,
                     c.queue_families.size(),
@@ -272,16 +182,11 @@ boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
         old_swapchain.has_value() ? old_swapchain.value().get_handle() : nullptr
     );
 
-    struct enable_Swapchain : public Swapchain {
-        enable_Swapchain(
-            std::shared_ptr<Device> device,
-            std::shared_ptr<Surface> surface
-        )
-            : Swapchain(std::move(device), std::move(surface)) {
-        }
-    };
+    struct enable_Swapchain : public Swapchain {};
+    std::shared_ptr<Swapchain> swapchain = std::make_shared<enable_Swapchain>();
 
-    std::shared_ptr<Swapchain> swapchain = std::make_shared<enable_Swapchain>(device, surface);
+    swapchain->device_ = device;
+    swapchain->surface_ = surface;
 
     auto device_handle = device->get_handle();
 
@@ -291,6 +196,8 @@ boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
 
     LEAF_AUTO(image_handles, to_result(device_handle.getSwapchainImagesKHR(swapchain->handle_.get())));
     swapchain->format_ = format;
+
+    // TODO: create images
 
     return swapchain;
 }
@@ -324,7 +231,7 @@ Capabilities::Capabilities(
     , supported_composite_alpha(supported_composite_alpha)
     , supported_usage_flags(supported_usage_flags)
     , supported_formats(std::move(supported_formats))
-    , present_modes(present_modes) {
+    , present_modes(std::move(present_modes)) {
 
 }
 }

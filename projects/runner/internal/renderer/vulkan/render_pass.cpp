@@ -7,34 +7,23 @@
 
 namespace mff::vulkan {
 
-RenderPass::RenderPass(std::shared_ptr<Device> device)
-    : device_(std::move(device)) {
-}
-
 boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
-    const std::vector<AttachmentInfo>& attachments,
-    const std::vector<SubpassInfo>& subpasses,
-    const std::vector<SubpassDependencyInfo>& dependencies,
+    const std::vector<AttachmentDescription>& attachments,
+    const std::vector<SubpassDescription>& subpasses,
+    const std::vector<SubpassDependency>& dependencies,
     const std::shared_ptr<Device>& device
 ) {
+    // to build the RenderPass we need to create References between the individual Subpasses and
+    // Attachments
     std::vector<vk::AttachmentReference> vk_references;
     std::vector<std::vector<std::uint32_t>> preserve_attachments;
     std::vector<vk::SubpassDescription> vk_descriptions;
     std::vector<vk::SubpassDependency> vk_dependencies;
 
+    // convert attachments to their vulkan representation
     std::vector<vk::AttachmentDescription> vk_attachments = mff::map(
-        [](const AttachmentInfo& attachment) {
-            return vk::AttachmentDescription(
-                {},
-                attachment.format,
-                vk::SampleCountFlagBits::e1, // TODO: samples conversion
-                attachment.load,
-                attachment.store,
-                attachment.stencil_load,
-                attachment.stencil_store,
-                attachment.initial_layout,
-                attachment.final_layout
-            );
+        [](const AttachmentDescription& attachment) {
+            return attachment.to_vulkan();
         },
         attachments
     );
@@ -42,19 +31,23 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
     std::size_t index = 0;
 
     for (const auto& info: subpasses) {
-        auto append_reference = [&](AttachmentInfo_t info) {
+        // for each Subpass we need to build the references (for each input, color, depth etc.
+        // attachment), so we will create helper function which will add the reference to global
+        // references store and return pointer to added element
+        auto append_reference = [&](AttachmentReference info) {
             vk_references.emplace_back(std::get<0>(info), std::get<1>(info));
 
             return &*std::next(std::begin(vk_references), vk_references.size() - 1);
         };
 
-        auto append_references = [&](const AttachmentInfos_t& offsets) {
+        // same for multiple descriptions
+        auto append_references = [&](const std::vector<AttachmentReference>& offsets) {
             auto current_offset = vk_references.size();
 
             std::for_each(
                 std::begin(offsets),
                 std::end(offsets),
-                [&](const AttachmentInfo_t& info) {
+                [&](const AttachmentReference& info) {
                     append_reference(info);
                 }
             );
@@ -73,7 +66,6 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
         auto depth_ptr = optional::map(info.depth_stencil_attachment, [&](auto a) { return append_reference(a); });
         preserve_attachments.push_back(info.preserve_attachments);
 
-
         vk_descriptions.push_back(
             vk::SubpassDescription(
                 {},
@@ -89,16 +81,7 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
     }
 
     for (const auto& dependency: dependencies) {
-        vk_dependencies.push_back(
-            vk::SubpassDependency(
-                dependency.source_subpass,
-                dependency.destination_subpass,
-                dependency.source_stages,
-                dependency.destination_stages,
-                dependency.source_access,
-                dependency.destination_access,
-                dependency.by_region ? vk::DependencyFlagBits::eByRegion : vk::DependencyFlags{}
-            ));
+        vk_dependencies.push_back(dependency.to_vulkan());
     }
 
     vk::RenderPassCreateInfo info(
@@ -111,23 +94,39 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
         vk_dependencies.data()
     );
 
-    struct enable_RenderPass : public RenderPass {
-        enable_RenderPass(std::shared_ptr<Device> device)
-            : RenderPass(std::move(device)) {
-        }
-    };
+    struct enable_RenderPass : public RenderPass {};
+    std::shared_ptr<RenderPass> render_pass = std::make_shared<enable_RenderPass>();
 
-    std::shared_ptr<RenderPass> render_pass = std::make_shared<enable_RenderPass>(device);
+    render_pass->device_ = device;
+    render_pass->attachments_ = attachments;
+    render_pass->subpasses_.reserve(subpasses.size());
+
+    index = 0;
+    for (const auto& subpass_description: subpasses) {
+        struct enable_Subpass : public Subpass {};
+        std::shared_ptr<Subpass> subpass = std::make_shared<enable_Subpass>();
+
+        subpass->render_pass_ = render_pass;
+        subpass->description_ = subpass_description;
+        subpass->subpass_id_ = index++;
+
+        render_pass->subpasses_.push_back(subpass);
+    }
 
     LEAF_AUTO_TO(render_pass->handle_, to_result(device->get_handle().createRenderPassUnique(info)));
 
     return render_pass;
 }
 
-RenderPassBuilder::RenderPassBuilder() {
+vk::RenderPass RenderPass::get_handle() const {
+    return handle_.get();
 }
 
-std::optional<std::size_t> RenderPassBuilder::get_attachment_offset(const Id_t& id) {
+std::optional<std::shared_ptr<Subpass>> RenderPass::get_subpass(std::uint32_t index) const {
+    return subpasses_[index];
+}
+
+std::optional<std::size_t> RenderPassBuilder::get_attachment_offset(const Id& id) {
     return mff::optional::map(
         mff::find_if(attachments_, [&](const auto& attachment) { return attachment.id == id; }),
         [&](auto it) { return std::distance(std::cbegin(attachments_), it); }
@@ -135,11 +134,11 @@ std::optional<std::size_t> RenderPassBuilder::get_attachment_offset(const Id_t& 
 }
 
 RenderPassBuilder& RenderPassBuilder::add_attachment(
-    const Id_t& id,
+    const Id& id,
     vk::AttachmentLoadOp load,
     vk::AttachmentStoreOp store,
     vk::Format format,
-    std::uint32_t samples,
+    vk::SampleCountFlagBits samples,
     std::optional<vk::ImageLayout> initial_layout,
     std::optional<vk::ImageLayout> final_layout
 ) {
@@ -160,19 +159,17 @@ RenderPassBuilder& RenderPassBuilder::add_attachment(
 }
 
 RenderPassBuilder& RenderPassBuilder::add_pass(
-    const Ids_t& color,
-    const std::optional<Id_t>& depth_stencil,
-    const Ids_t& input,
-    const Ids_t& resolve
+    const std::vector<Id>& color,
+    const std::optional<Id>& depth_stencil,
+    const std::vector<Id>& input,
+    const std::vector<Id>& resolve
 ) {
-    auto to_offset = [&](auto id) { return get_attachment_offset(id).value(); };
-
     passes_.push_back(
         PartialSubpassInfo{
-            mff::map(to_offset, color),
-            mff::optional::map(depth_stencil, to_offset),
-            mff::map(to_offset, input),
-            mff::map(to_offset, resolve),
+            color,
+            depth_stencil,
+            input,
+            resolve
         }
     );
 
@@ -180,97 +177,142 @@ RenderPassBuilder& RenderPassBuilder::add_pass(
 }
 
 boost::leaf::result<std::shared_ptr<RenderPass>> RenderPassBuilder::build(const std::shared_ptr<Device>& device) {
-    std::vector<AttachmentInfo> attachments;
-    std::vector<SubpassInfo> passes;
-    std::vector<SubpassDependencyInfo> dependencies;
+    std::vector<AttachmentDescription> attachments;
+    std::vector<SubpassDescription> passes;
+    std::vector<SubpassDependency> dependencies;
 
-    auto is_depth = [&](Offset_t index) -> bool {
+    // helpers to decide if is attachment ever used like depth/color/resolve/input
+    auto is_depth = [&](Id id) -> bool {
         return mff::contains_if(
             passes_,
             [&](auto pass) {
                 return pass.depth_stencil_attachment.has_value() ?
-                       pass.depth_stencil_attachment.value() == index : false;
+                       pass.depth_stencil_attachment.value() == id : false;
             }
         );
     };
 
-    auto is_color = [&](Offset_t index) -> bool {
-        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.color_attachments, index); });
+    auto is_color = [&](Id id) -> bool {
+        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.color_attachments, id); });
     };
 
-    auto is_resolve = [&](Offset_t index) -> bool {
-        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.resolve_attachments, index); });
+    auto is_resolve = [&](Id id) -> bool {
+        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.resolve_attachments, id); });
     };
 
-    auto is_input = [&](Offset_t index) -> bool {
-        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.input_attachments, index); });
+    auto is_input = [&](Id id) -> bool {
+        return mff::contains_if(passes_, [&](auto pass) { return mff::contains(pass.input_attachments, id); });
     };
 
-    Offset_t index = 0;
     for (const auto& attachment: attachments_) {
-        auto get_initial_layout = [&]() {
-            if (attachment.initial_layout.has_value()) return attachment.initial_layout.value();
-            if (is_depth(index)) return vk::ImageLayout::eDepthStencilAttachmentOptimal;
-            if (is_color(index)) return vk::ImageLayout::eColorAttachmentOptimal;
-            if (is_resolve(index)) return vk::ImageLayout::eTransferDstOptimal;
-            if (is_input(index)) return vk::ImageLayout::eShaderReadOnlyOptimal;
-            return vk::ImageLayout::eUndefined;
-        };
+        std::optional<vk::ImageLayout> initial_layout = std::nullopt;
+        std::optional<vk::ImageLayout> final_layout = std::nullopt;
 
-        auto get_final_layout = [&]() {
-            if (attachment.initial_layout.has_value()) return attachment.initial_layout.value();
-            if (is_input(index)) return vk::ImageLayout::eShaderReadOnlyOptimal;
-            if (is_resolve(index)) return vk::ImageLayout::eTransferDstOptimal;
-            if (is_color(index)) return vk::ImageLayout::eColorAttachmentOptimal;
-            if (is_depth(index)) return vk::ImageLayout::eDepthStencilAttachmentOptimal;
-            return vk::ImageLayout::eUndefined;
-        };
+        if (is_depth(attachment.id)) {
+            if (!initial_layout) initial_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+            final_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+        }
+
+        if (is_color(attachment.id)) {
+            if (!initial_layout) initial_layout = vk::ImageLayout::eColorAttachmentOptimal;
+            final_layout = vk::ImageLayout::eColorAttachmentOptimal;
+        }
+
+        if (is_resolve(attachment.id)) {
+            if (!initial_layout) initial_layout = vk::ImageLayout::eTransferDstOptimal;
+            final_layout = vk::ImageLayout::eTransferDstOptimal;
+        }
+
+        if (is_input(attachment.id)) {
+            if (!initial_layout) initial_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            final_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        }
+
+        if (attachment.initial_layout) {
+            initial_layout = attachment.initial_layout;
+        }
+
+        if (attachment.final_layout) {
+            final_layout = attachment.final_layout;
+        }
+
+        if (!initial_layout || !final_layout) {
+            return boost::leaf::new_error(build_render_pass_error_code::missing_initial_or_final_layout);
+        }
 
         attachments.push_back(
-            AttachmentInfo{
+            AttachmentDescription{
                 attachment.format,
                 attachment.samples,
                 attachment.load,
                 attachment.store,
                 attachment.load,
                 attachment.store,
-                get_initial_layout(),
-                get_final_layout()
+                initial_layout.value(),
+                final_layout.value()
             }
         );
-
-        index++;
     }
 
-    index = 0;
+    std::uint32_t index = 0;
     for (const auto& pass: passes_) {
         std::set<std::uint32_t> uniq;
 
-        auto add_image_layout = [&](vk::ImageLayout layout) {
-            return [&](Offset_t id) {
-                uniq.insert(id); // does not really make sense here, but...
+        auto get_reference = [&](const Id& id, vk::ImageLayout layout) -> std::optional<AttachmentReference> {
+            auto offset = get_attachment_offset(id);
+            if (!offset) return std::nullopt;
 
-                return std::make_tuple(
-                    id,
-                    layout
-                );
-            };
+            uniq.insert(offset.value());
+
+            return std::make_tuple(offset.value(), layout);
         };
 
+        auto get_references = [&](
+            const std::vector<Id>& ids,
+            vk::ImageLayout layout
+        ) -> std::optional<std::vector<AttachmentReference>> {
+            std::vector<AttachmentReference> references;
+            references.reserve(ids.size());
+
+            for (const auto& id: ids) {
+                auto reference = get_reference(id, layout);
+                if (!reference) return std::nullopt;
+
+                references.push_back(std::move(reference.value()));
+            }
+
+            return references;
+        };
+
+        auto colors = get_references(pass.color_attachments, vk::ImageLayout::eColorAttachmentOptimal);
+        auto inputs = get_references(pass.input_attachments, vk::ImageLayout::eColorAttachmentOptimal);
+        auto resolves = get_references(pass.resolve_attachments, vk::ImageLayout::eColorAttachmentOptimal);
+
+        if (!colors || !inputs || !resolves) {
+            return boost::leaf::new_error(build_render_pass_error_code::invalid_id_in_subpass_definition);
+        }
+
+        std::optional<AttachmentReference> depth = std::nullopt;
+
+        if (pass.depth_stencil_attachment) {
+            depth = get_reference(
+                pass.depth_stencil_attachment.value(),
+                vk::ImageLayout::eDepthStencilAttachmentOptimal
+            );
+        }
+
         passes.push_back(
-            SubpassInfo{
-                mff::map(add_image_layout(vk::ImageLayout::eColorAttachmentOptimal), pass.color_attachments),
-                mff::optional::map(
-                    pass.depth_stencil_attachment,
-                    add_image_layout(vk::ImageLayout::eTransferDstOptimal)),
-                mff::map(add_image_layout(vk::ImageLayout::eShaderReadOnlyOptimal), pass.input_attachments),
-                mff::map(add_image_layout(vk::ImageLayout::eTransferDstOptimal), pass.resolve_attachments),
+            SubpassDescription{
+                inputs.value(),
+                colors.value(),
+                resolves.value(),
+                depth,
                 std::vector<uint32_t>(uniq.begin(), uniq.end())
             }
         );
 
         dependencies.push_back(
-            SubpassDependencyInfo{
+            SubpassDependency{
                 index,
                 index + 1,
                 vk::PipelineStageFlagBits::eAllGraphics,
@@ -287,4 +329,29 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPassBuilder::build(const 
     return RenderPass::build(attachments, passes, dependencies, device);
 }
 
+vk::AttachmentDescription AttachmentDescription::to_vulkan() const {
+    return vk::AttachmentDescription(
+        {},
+        format,
+        samples,
+        load,
+        store,
+        stencil_load,
+        stencil_store,
+        initial_layout,
+        final_layout
+    );
+}
+
+vk::SubpassDependency SubpassDependency::to_vulkan() const {
+    return vk::SubpassDependency(
+        source_subpass,
+        destination_subpass,
+        source_stages,
+        destination_stages,
+        source_access,
+        destination_access,
+        by_region ? vk::DependencyFlagBits::eByRegion : vk::DependencyFlags{}
+    );
+}
 }

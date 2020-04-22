@@ -9,10 +9,6 @@
 
 namespace mff::vulkan {
 
-Device::Device(std::shared_ptr<PhysicalDevice> physical_device)
-    : physical_device_(physical_device), instance_(physical_device->get_instance()) {
-}
-
 boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> Device::build(
     const std::shared_ptr<PhysicalDevice>& physical_device,
     const std::vector<QueueFamily>& queue_families,
@@ -22,6 +18,7 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
     auto layers = instance->get_loaded_layers();
     auto layers_c = utils::to_pointer_char_data(layers);
 
+    // TODO: check whether the extension is supported
     auto extensions_c = utils::to_pointer_char_data(extensions);
 
     std::vector<QueueFamily> uniq_families;
@@ -29,6 +26,7 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
     original_to_uniq.reserve(queue_families.size());
 
     for (auto& queue_family: queue_families) {
+        // TODO: check whether the queue family is from correct physical device
         auto it = mff::find(uniq_families, queue_family);
 
         if (!it) {
@@ -44,7 +42,6 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
     priorities_owner.reserve(uniq_families.size());
 
     for (const auto& queue_family: uniq_families) {
-        // TODO: should probably include some strategy to change priority
         priorities_owner.emplace_back(std::vector<float>(queue_family.get_queues_count(), 0.5f));
         queue_create_infos.push_back(
             vk::DeviceQueueCreateInfo(
@@ -63,14 +60,10 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
         extensions_c.size(),
         extensions_c.data());
 
-    struct enable_Device : public Device {
-        enable_Device(std::shared_ptr<PhysicalDevice> physical_device)
-            : Device(std::move(physical_device)) {
-        }
-    };
+    struct enable_Device : public Device {};
+    std::shared_ptr<Device> device = std::make_shared<enable_Device>();
 
-    std::shared_ptr<Device> device = std::make_shared<enable_Device>(physical_device);
-
+    device->physical_device_ = physical_device;
     device->layers_ = layers;
     device->extensions_ = extensions;
 
@@ -88,7 +81,14 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
                 queues.push_back(device->handle_->getQueue(queue_family.get_index(), i));
             }
 
-            return std::make_shared<Queue>(device, queue_family, queues);
+            struct enable_Queue : public Queue {};
+            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>();
+
+            queue->device_ = device;
+            queue->queue_family_ = queue_family;
+            queue->queues_ = std::move(queues);
+
+            return queue;
         },
         uniq_families
     );
@@ -117,16 +117,6 @@ const std::vector<std::string>& Device::get_extensions() const {
 
 vk::Device Device::get_handle() const {
     return handle_.get();
-}
-
-Queue::Queue(
-    std::shared_ptr<Device> device,
-    QueueFamily queue_family,
-    std::vector<vk::Queue> queues
-)
-    : device_(std::move(device))
-    , queue_family_(std::move(queue_family))
-    , queues_(std::move(queues)) {
 }
 
 }

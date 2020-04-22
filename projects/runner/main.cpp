@@ -7,52 +7,9 @@
 #include "./internal/renderer/vulkan/swapchain.h"
 #include "./internal/window/events_debug.h"
 #include "./internal/window/event_loop.h"
-#include "./internal/window/window.h"
+#include "./internal/window/glfw_window.h"
 #include "./utils/logger.h"
 #include "internal/renderer/vulkan/render_pass.h"
-
-#include <boost/hana.hpp>
-#include <vk_mem_alloc.h>
-
-/*std::vector<std::string> get_required_glfw_instance_extensions() {
-    auto context = window::detail::create_glfw_context();
-
-    unsigned int glfwExtensionCount;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    return std::vector<std::string>(glfwExtensions, glfwExtensions + glfwExtensionCount);
-}
-
-std::vector<std::string> get_required_mff_instance_extensions() {
-    std::vector<std::string> validation_extensions = {};
-
-    if (constants::kVULKAN_DEBUG) {
-        validation_extensions = {VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
-            VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
-    }
-
-    std::vector<std::string> extensions = {};
-
-    extensions.insert(
-        std::end(extensions),
-        std::begin(validation_extensions),
-        std::end(validation_extensions)
-    );
-
-    return extensions;
-}
-
-std::set<std::string> get_required_instance_extensions() {
-    auto glfw_extensions = get_required_glfw_instance_extensions();
-    auto mff_extensions = get_required_mff_instance_extensions();
-
-    std::set<std::string> extensions;
-
-    extensions.insert(std::begin(glfw_extensions), std::end(glfw_extensions));
-    extensions.insert(std::begin(mff_extensions), std::end(mff_extensions));
-
-    return extensions;
-}*/
 
 struct QueueFamilyIndices {
     std::optional<mff::vulkan::QueueFamily> graphics_family;
@@ -165,13 +122,14 @@ mff::Vector2ui choose_swap_extent(
 boost::leaf::result<void> run() {
     mff::window::EventLoop event_loop;
 
-    auto window = mff::window::WindowBuilder()
+    LEAF_AUTO(window, mff::window::glfw::WindowBuilder()
         .with_size({400, 400})
         .with_title("My app")
-        .build(&event_loop);
+        .build(&event_loop));
 
     LEAF_AUTO(instance, mff::vulkan::Instance::build(std::nullopt, window->get_required_extensions(), {}));
     LEAF_AUTO(surface, mff::vulkan::Surface::build(window, instance));
+
     auto physical_device = mff::find_if(
         instance->get_physical_devices(),
         [&](auto device) { return is_device_suitable(device, surface, {}); }
@@ -232,7 +190,7 @@ boost::leaf::result<void> run() {
                 vk::AttachmentLoadOp::eClear,
                 vk::AttachmentStoreOp::eStore,
                 swapchain->get_format(),
-                1,
+                vk::SampleCountFlagBits::e1,
                 vk::ImageLayout::eUndefined,
                 vk::ImageLayout::ePresentSrcKHR
             )

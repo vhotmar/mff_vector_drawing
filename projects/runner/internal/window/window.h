@@ -4,69 +4,33 @@
 
 #include "../leaf.h"
 #include "../eigen.h"
-
-#include "./events.h"
-#include "./event_loop.h"
-#include "./context.h"
+#include "../vulkan.h"
 
 namespace mff::window {
 
-namespace detail {
-
-struct DestroyGLFWwindow {
-    void operator()(GLFWwindow* ptr);
-};
-
-using glfw_window = std::unique_ptr<GLFWwindow, DestroyGLFWwindow>;
-
-void window_close_callback(GLFWwindow* glfw_window);
-void framebuffer_size_callback(GLFWwindow* glfw_window, int width, int height);
-
-}
-
+/**
+ * Simple abstraction over window
+ */
 class Window {
 public:
-    Window(std::shared_ptr<detail::GLFWContext> context, detail::glfw_window handle, EventLoop* loop);
+    /**
+     * @brief Given vulkan instance return vulkan surface (low-level API for now)
+     * @param instance the vulkan instance
+     * @return result of building the vulkan surface
+     */
+    virtual boost::leaf::result<vk::UniqueSurfaceKHR> create_surface(vk::Instance instance) = 0;
 
-    boost::leaf::result<vk::UniqueSurfaceKHR> create_surface(vk::Instance instance);
+    /**
+     * @brief Get vulkan required extensions
+     * @return the vulkan extensions
+     */
+    virtual std::vector<std::string> get_required_extensions() = 0;
 
-    std::vector<std::string> get_required_extensions();
-    Vector2ui get_inner_size();
-
-    void dispatch(events::Event event);
-
-private:
-    void setup_callbacks();
-
-private:
-    // Order dependent!!!
-    std::shared_ptr<detail::GLFWContext> context_;
-    detail::glfw_window handle_;
-    EventLoop* event_loop_;
-};
-
-struct WindowSize {
-    int width;
-    int height;
-
-    WindowSize(int width, int height);
-};
-
-class WindowBuilder {
-public:
-    WindowBuilder();
-
-    WindowBuilder& with_title(std::string title);
-    WindowBuilder& with_size(WindowSize size);
-    std::shared_ptr<Window> build(EventLoop* loop);
-
-private:
-    WindowSize get_size();
-
-private:
-    bool resizable_ = false;
-    std::optional<WindowSize> size_;
-    std::string title_;
+    /**
+     * @brief Get current window size
+     * @return the window size
+     */
+    virtual Vector2ui get_inner_size() = 0;
 };
 
 };

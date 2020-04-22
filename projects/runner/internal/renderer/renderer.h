@@ -6,7 +6,6 @@
 #include <set>
 #include <fmt/format.h>
 
-#include "../window/context.h"
 #include "../vulkan.h"
 
 #include "utils.h"
