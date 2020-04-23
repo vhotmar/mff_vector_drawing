@@ -67,6 +67,10 @@ struct Stencil {
      */
     bool always_keep();
 
+    /**
+     * Convert this object to vulkan representation
+     * @return vulkan representation
+     */
     vk::StencilOpState to_vulkan();
 };
 
@@ -132,9 +136,16 @@ struct DepthStencil {
      */
     Stencil stencil_back;
 
+    /**
+     * Convert this object to vulkan representation
+     * @return vulkan representation
+     */
     vk::PipelineDepthStencilStateCreateInfo to_vulkan() const;
 };
 
+/**
+ * Vertex input description
+ */
 namespace vertex {
 
 struct BufferItem {
@@ -144,8 +155,8 @@ struct BufferItem {
 };
 
 struct AttributesInfo {
-    std::uint32_t offset;
     vk::Format format;
+    std::uint32_t offset;
 };
 
 struct AttributesItem {
@@ -154,9 +165,16 @@ struct AttributesItem {
     AttributesInfo info;
 };
 
+/**
+ * Vertex input
+ *
+ * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap21.html#VkPipelineVertexInputStateCreateInfo
+ */
 struct DefinitionInfo {
     std::vector<BufferItem> buffers;
     std::vector<AttributesItem> attributes;
+
+    vk::PipelineVertexInputStateCreateInfo to_vulkan() const;
 };
 
 }
@@ -340,6 +358,10 @@ struct Rasterization {
 
     DepthBiasControl depth_bias = DepthBiasControl_::Disabled();
 
+    /**
+     *
+     * @return
+     */
     vk::PipelineRasterizationStateCreateInfo to_vulkan() const;
 };
 
@@ -349,67 +371,70 @@ struct Rasterization {
  * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap28.html#VkPipelineColorBlendAttachmentState
  */
 struct AttachmentBlend {
-    bool enabled;
+    /**
+     * If false, blending is ignored and the output is directly written to the attachment.
+     */
+    bool enabled = false;
 
-    vk::BlendOp color_op;
-    vk::BlendFactor color_source;
-    vk::BlendFactor color_destination;
+    vk::BlendOp color_op = vk::BlendOp::eAdd;
+    vk::BlendFactor color_source = vk::BlendFactor::eZero;
+    vk::BlendFactor color_destination = vk::BlendFactor::eOne;
 
-    vk::BlendOp alpha_op;
-    vk::BlendFactor alpha_source;
-    vk::BlendFactor alpha_destination;
+    vk::BlendOp alpha_op= vk::BlendOp::eAdd;
+    vk::BlendFactor alpha_source = vk::BlendFactor::eZero;
+    vk::BlendFactor alpha_destination = vk::BlendFactor::eOne;
 
-    bool mask_red;
-    bool mask_green;
-    bool mask_blue;
-    bool mask_alpha;
+    bool mask_red = true;
+    bool mask_green = true;
+    bool mask_blue = true;
+    bool mask_alpha = true;
 
-    vk::PipelineColorBlendAttachmentState to_vulkan() {
-        vk::ColorComponentFlags flags;
+    static AttachmentBlend pass_through();
+    static AttachmentBlend alpha_blending();
 
-        if (mask_red) {
-            flags |= vk::ColorComponentFlagBits::eR;
-        }
-
-        if (mask_alpha) {
-            flags |= vk::ColorComponentFlagBits::eA;
-        }
-
-        if (mask_green) {
-            flags |= vk::ColorComponentFlagBits::eG;
-        }
-
-        if (mask_blue) {
-            flags |= vk::ColorComponentFlagBits::eB;
-        }
-
-        return vk::PipelineColorBlendAttachmentState(
-            enabled,
-            color_source,
-            color_destination,
-            color_op,
-            alpha_source,
-            alpha_destination,
-            alpha_op,
-            flags
-        );
-    }
+    vk::PipelineColorBlendAttachmentState to_vulkan() const;
 };
 
-struct AttachmentsBlendCollective {
+namespace AttachmentsBlend_ {
+
+/**
+ * All the framebuffer attachments will use the same blending.
+ */
+struct Collective {
     AttachmentBlend blend;
 };
 
-struct AttachemntsBlendIndividual {
+/**
+ * Each attachment will behave differently.
+ */
+struct Individual {
     std::vector<AttachmentBlend> blends;
 };
 
-using AttachmentsBlend = std::variant<AttachmentsBlendCollective, AttachemntsBlendIndividual>;
+}
 
+/**
+ * Describes how the blending system should behave.
+ */
+using AttachmentsBlend = std::variant<AttachmentsBlend_::Collective, AttachmentsBlend_::Individual>;
+
+/**
+ * Describes how the color output of the fragment shader is written to the attachment.
+ *
+ * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap28.html#VkPipelineColorBlendStateCreateInfo
+ */
 struct Blend {
     std::optional<vk::LogicOp> logic_op;
     AttachmentsBlend attachments;
+
+    /**
+     * The constant color to use for the `Constant*` blending operation.
+     *
+     * If std::nullopt then considered dynamic and needs to be set during draw call.
+     */
     std::optional<Vector4f> blend_constants;
+
+    vk::PipelineColorBlendStateCreateInfo to_vulkan(std::shared_ptr<Subpass> pass) const;
 };
 
 class GraphicsPipelineBuilder {
@@ -424,7 +449,7 @@ private:
     vk::PipelineMultisampleStateCreateInfo multisample;
     DepthStencil depth_stencil;
     Blend blend;
-    std::optional<Subpass> render_pass;
+    std::optional<std::shared_ptr<Subpass>> render_pass;
 
 public:
     boost::leaf::result<std::shared_ptr<GraphicsPipeline>> build(std::shared_ptr<Device> device);

@@ -190,11 +190,13 @@ public:
      *
      * @return
      */
-    std::uint32_t get_color_attachments_count();
+    std::uint32_t get_color_attachments_count() const;
 
-    std::shared_ptr<RenderPass> get_render_pass();
+    vk::SampleCountFlagBits get_samples() const;
 
-    std::uint32_t get_index();
+    std::shared_ptr<RenderPass> get_render_pass() const;
+
+    std::uint32_t get_index() const;
 };
 
 /**
