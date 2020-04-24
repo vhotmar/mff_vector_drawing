@@ -17,6 +17,7 @@ add_subdirectory(utils)
 target_link_libraries(${PROJECT_NAME}
     mff::parser_combinator
     mff::core
+    mff::graphics
     Vulkan::Vulkan
     glfw
     spdlog::spdlog

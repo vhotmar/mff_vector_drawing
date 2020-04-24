@@ -1,15 +1,12 @@
 #include <iostream>
 
 #include <mff/algorithms.h>
+#include <mff/graphics/vulkan/device.h>
+#include <mff/graphics/vulkan/instance.h>
+#include <mff/graphics/vulkan/swapchain.h>
+#include <mff/graphics/window.h>
 
-#include "./internal/renderer/vulkan/instance.h"
-#include "./internal/renderer/vulkan/device.h"
-#include "./internal/renderer/vulkan/swapchain.h"
-#include "./internal/window/events_debug.h"
-#include "./internal/window/event_loop.h"
-#include "./internal/window/glfw_window.h"
 #include "./utils/logger.h"
-#include "internal/renderer/vulkan/render_pass.h"
 
 struct QueueFamilyIndices {
     std::optional<mff::vulkan::QueueFamily> graphics_family;

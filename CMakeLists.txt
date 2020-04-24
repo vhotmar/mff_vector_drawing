@@ -23,5 +23,6 @@ add_subdirectory(third_party)
 # Add projects
 ##
 add_subdirectory(projects/core)
+add_subdirectory(projects/graphics)
 add_subdirectory(projects/parser_combinator)
 add_subdirectory(projects/runner)
