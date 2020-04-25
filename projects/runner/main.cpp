@@ -8,7 +8,38 @@
 
 #include "./utils/logger.h"
 
-struct QueueFamilyIndices {
+class Sample {
+private:
+    std::unique_ptr<std::string> handle_;
+
+    Sample() = default;
+
+public:
+    std::string* get_handle() {
+        return handle_.get();
+    }
+
+    static Sample build(std::string handle) {
+        Sample result;
+
+        result.handle_ = std::make_unique<std::string>(handle);
+
+
+        return result;
+    }
+};
+
+int main() {
+    std::cout << "Happy!" << std::endl;
+
+    auto s1 = Sample::build("mama mia");
+    auto s2 = std::make_shared<Sample>(std::move(s1));
+
+    //std::cout << "MamaMia - " << *s1.get_handle() << std::endl;
+    std::cout << "MamaMia - " << *s2->get_handle() << std::endl;
+}
+
+/*struct QueueFamilyIndices {
     std::optional<mff::vulkan::QueueFamily> graphics_family;
     std::optional<mff::vulkan::QueueFamily> present_family;
 
@@ -229,4 +260,4 @@ int main() {
         }
     );
 }
-
+*/

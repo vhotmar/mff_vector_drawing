@@ -10,6 +10,12 @@
 
 namespace mff::vulkan {
 
+struct PipelineLayoutInfo {
+    std::vector<DescriptorSetInfo> layout_infos;
+
+    PipelineLayoutInfo make_union(const PipelineLayoutInfo& other) const;
+};
+
 /**
  *
  */
@@ -18,9 +24,11 @@ class PipelineLayout {
     vk::UniquePipelineLayout handle_;
 
 public:
-    boost::leaf::result<std::shared_ptr<PipelineLayout>> build(
+    vk::PipelineLayout get_handle() const;
+
+    static boost::leaf::result<std::shared_ptr<PipelineLayout>> build(
         const std::shared_ptr<Device>& device,
-        const std::vector<std::vector<DescriptorInfo>>& layouts
+        const PipelineLayoutInfo& layout_info
     );
 };
 

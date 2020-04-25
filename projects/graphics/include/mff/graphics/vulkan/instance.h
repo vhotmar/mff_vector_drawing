@@ -178,7 +178,7 @@ public:
      * @param layers layers to enable for the created instance (they are loaded in the specified order)
      * @return
      */
-    static boost::leaf::result<std::shared_ptr<Instance>> build(
+    static boost::leaf::result<Instance> build(
         std::optional<ApplicationInfo> info,
         std::vector<std::string> extensions,
         std::vector<std::string> layers

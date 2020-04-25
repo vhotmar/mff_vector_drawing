@@ -45,7 +45,9 @@ boost::leaf::result<std::shared_ptr<DescriptorSetLayout>> DescriptorSetLayout::b
 
 DescriptorSetInfo DescriptorSetInfo::make_union(const DescriptorSetInfo& other) const {
     auto get_item = [](const auto& vector, std::size_t index) -> std::optional<DescriptorInfo> {
-        if (index >= vector.size())return std::nullopt;
+        if (index >= vector.size()) {
+            return std::nullopt;
+        }
 
         return vector[index];
     };

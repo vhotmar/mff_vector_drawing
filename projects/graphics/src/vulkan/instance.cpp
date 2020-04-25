@@ -15,7 +15,7 @@
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
+boost::leaf::result<Instance> Instance::build(
     std::optional<ApplicationInfo> info,
     std::vector<std::string> extensions,
     std::vector<std::string> layers
@@ -128,9 +128,7 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
     );
 
     // we need this so std::make_shared works
-    struct enable_Instance : public Instance {};
-
-    std::shared_ptr<Instance> instance = std::make_shared<enable_Instance>();
+    Instance instance;
 
     if (constants::kVULKAN_DEBUG) {
         vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
@@ -138,28 +136,28 @@ boost::leaf::result<std::shared_ptr<Instance>> Instance::build(
             get_debug_utils_create_info()
         };
 
-        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>())));
+        LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>())));
     } else {
-        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(create_instance_info)));
+        LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(create_instance_info)));
     }
 
     // add instance functions to dispatcher
-    init_dispatcher(instance->handle_.get());
+    init_dispatcher(instance.handle_.get());
 
     if (constants::kVULKAN_DEBUG) {
         auto create_info = get_debug_utils_create_info();
         LEAF_AUTO_TO(
-            instance->debug_utils_messenger_,
-            to_result(instance->handle_->createDebugUtilsMessengerEXTUnique(create_info)));
+            instance.debug_utils_messenger_,
+            to_result(instance.handle_->createDebugUtilsMessengerEXTUnique(create_info)));
     }
 
-    instance->extensions_ = extensions;
-    instance->layers_ = layers;
-    instance->info_ = info;
+    instance.extensions_ = extensions;
+    instance.layers_ = layers;
+    instance.info_ = info;
 
     // list all physical devices
-    LEAF_AUTO(physical_devices, to_result(instance->handle_->enumeratePhysicalDevices()));
-    instance->physical_devices_.reserve(physical_devices.size());
+    LEAF_AUTO(physical_devices, to_result(instance.handle_->enumeratePhysicalDevices()));
+    instance.physical_devices_.reserve(physical_devices.size());
 
     // initialize physical devices
     for (auto physical_device: physical_devices) {

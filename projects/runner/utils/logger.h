@@ -5,8 +5,6 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include "debug.h"
-
 namespace logger {
 
 std::shared_ptr<spdlog::logger> setup_system_logging();

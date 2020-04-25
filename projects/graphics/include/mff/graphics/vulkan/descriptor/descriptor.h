@@ -21,11 +21,11 @@ struct DescriptorInfo {
 
     vk::DescriptorSetLayoutBinding to_vulkan(std::uint32_t binding) const;
 
-    DescriptorInfo make_union(const DescriptorInfo& other) const;
+    std::optional<DescriptorInfo> make_union(const DescriptorInfo& other) const;
 };
 
 struct DescriptorSetInfo {
-    std::vector<std::optional<DescriptorInfo>>& descriptors;
+    std::vector<std::optional<DescriptorInfo>> descriptors;
 
     DescriptorSetInfo make_union(const DescriptorSetInfo& other) const;
 };
