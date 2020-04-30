@@ -10,8 +10,8 @@
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> Device::build(
-    const std::shared_ptr<PhysicalDevice>& physical_device,
+boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> Device::build(
+    const PhysicalDevice* physical_device,
     const std::vector<QueueFamily>& queue_families,
     const std::vector<std::string>& extensions
 ) {
@@ -62,8 +62,9 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
         extensions_c.data());
 
     struct enable_Device : public Device {};
-    std::shared_ptr<Device> device = std::make_shared<enable_Device>();
+    std::unique_ptr<Device> device = std::make_unique<enable_Device>();
 
+    device->instance_ = instance;
     device->physical_device_ = physical_device;
     device->layers_ = layers;
     device->extensions_ = extensions;
@@ -82,14 +83,17 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
                 queues.push_back(device->handle_->getQueue(queue_family.get_index(), i));
             }
 
-            struct enable_Queue : public Queue {};
-            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>();
+            struct enable_Queue : public Queue {
+                enable_Queue(QueueFamily family)
+                    : Queue(family) {
+                }
+            };
+            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>(queue_family);
 
-            queue->device_ = device;
-            queue->queue_family_ = queue_family;
+            queue->device_ = device.get();
             queue->queues_ = std::move(queues);
 
-            return queue;
+            return std::move(queue);
         },
         uniq_families
     );
@@ -104,7 +108,7 @@ boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_
     return std::make_tuple(std::move(device), std::move(output_queues));
 }
 
-std::shared_ptr<PhysicalDevice> Device::get_physical_device() const {
+const PhysicalDevice* Device::get_physical_device() const {
     return physical_device_;
 }
 
@@ -118,6 +122,10 @@ const std::vector<std::string>& Device::get_extensions() const {
 
 vk::Device Device::get_handle() const {
     return handle_.get();
+}
+
+Queue::Queue(QueueFamily family)
+    : queue_family_(family) {
 }
 
 }

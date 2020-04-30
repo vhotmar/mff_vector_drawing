@@ -108,7 +108,7 @@ public:
  */
 class Surface {
 private:
-    std::shared_ptr<Instance> instance_;
+    const Instance* instance_;
     vk::UniqueSurfaceKHR handle_;
 
     Surface() = default;
@@ -124,13 +124,13 @@ public:
      * @param queue_family QueueFamily which will be checked
      * @return support
      */
-    bool is_supported(const QueueFamily& queue_family) const;
+    bool is_supported(const QueueFamily* queue_family) const;
 
     /**
      * @param physical_device PhysicalDevice against we will try to find capabilities
      * @return Capabilities
      */
-    boost::leaf::result<Capabilities> get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device) const;
+    boost::leaf::result<Capabilities> get_capabilities(const PhysicalDevice* physical_device) const;
 
     /**
      * Try to create the Surface from Window and instance
@@ -138,9 +138,9 @@ public:
      * @param instance
      * @return
      */
-    static boost::leaf::result<std::shared_ptr<Surface>> build(
+    static boost::leaf::result<std::unique_ptr<Surface>> build(
         std::shared_ptr<window::Window> window,
-        std::shared_ptr<Instance> instance
+        const Instance* instance
     );
 };
 
@@ -210,8 +210,8 @@ enum class create_swapchain_error_code {
 class Swapchain {
 private:
     vk::UniqueSwapchainKHR handle_;
-    std::shared_ptr<Device> device_;
-    std::shared_ptr<Surface> surface_;
+    const Device* device_;
+    const Surface* surface_;
     vk::Format format_;
 
 public:
@@ -245,8 +245,8 @@ public:
      * @return created Swapchain object
      */
     static boost::leaf::result<std::shared_ptr<Swapchain>> build(
-        std::shared_ptr<Device> device,
-        std::shared_ptr<Surface> surface,
+        const Device* device,
+        const Surface* surface,
         std::uint32_t num_images,
         vk::Format format,
         std::optional<Vector2ui> dimensions,

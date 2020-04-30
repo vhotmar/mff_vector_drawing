@@ -1,4 +1,5 @@
 #include <mff/graphics/logger.h>
+#include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window/glfw_window.h>
 
 #include "../utils.h"

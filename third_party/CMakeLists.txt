@@ -1,5 +1,5 @@
-# boost-iterator boost-hana vulkan-memory-allocator eigen3 tl-expected catch2 fmt glfw3 glm leaf spdlog
-# shaderc
+# boost-iterator boost-hana vulkan-memory-allocator eigen3 tl-expected catch2 fmt glfw3 glm leaf spdlog shaderc
+
 
 find_package(Boost 1.72.0 REQUIRED)
 
@@ -26,6 +26,10 @@ find_package(glm CONFIG REQUIRED)
 
 find_package(leaf CONFIG REQUIRED)
 # target_link_libraries(main PRIVATE zajo::leaf)
+
+find_package(range-v3 CONFIG REQUIRED)
+# Note: 2 target(s) were omitted.
+# target_link_libraries(main PRIVATE range-v3 range-v3-meta range-v3::meta range-v3-concepts)
 
 
 IF (APPLE)

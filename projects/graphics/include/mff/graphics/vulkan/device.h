@@ -21,14 +21,14 @@ class Device;
  * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#devsandqueues-queues
  */
 class Queue {
+    friend class Device;
+
 private:
     std::vector<vk::Queue> queues_;
-    std::shared_ptr<Device> device_;
+    const Device* device_;
     QueueFamily queue_family_;
 
-    Queue() = default;
-
-    friend class Device;
+    Queue(QueueFamily family);
 };
 
 enum class create_device_error_code {
@@ -44,8 +44,8 @@ enum class create_device_error_code {
  */
 class Device {
 private:
-    std::shared_ptr<Instance> instance_;
-    std::shared_ptr<PhysicalDevice> physical_device_;
+    const Instance* instance_;
+    const PhysicalDevice* physical_device_;
     vk::UniqueDevice handle_;
     std::vector<std::string> layers_;
     std::vector<std::string> extensions_;
@@ -56,7 +56,7 @@ public:
     /**
      * @return corresponding physical device
      */
-    std::shared_ptr<PhysicalDevice> get_physical_device() const;
+    const PhysicalDevice* get_physical_device() const;
 
     /**
      * @return layers loaded for this device
@@ -82,8 +82,8 @@ public:
      * @param extensions A list of vulkan extensions to enable for new Device
      * @return
      */
-    static boost::leaf::result<std::tuple<std::shared_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> build(
-        const std::shared_ptr<PhysicalDevice>& physical_device,
+    static boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> build(
+        const PhysicalDevice* physical_device,
         const std::vector<QueueFamily>& queue_families,
         const std::vector<std::string>& extensions
     );

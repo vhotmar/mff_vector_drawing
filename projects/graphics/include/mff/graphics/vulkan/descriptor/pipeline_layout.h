@@ -20,14 +20,14 @@ struct PipelineLayoutInfo {
  *
  */
 class PipelineLayout {
-    std::shared_ptr<Device> device_;
+    const Device* device_;
     vk::UniquePipelineLayout handle_;
 
 public:
     vk::PipelineLayout get_handle() const;
 
-    static boost::leaf::result<std::shared_ptr<PipelineLayout>> build(
-        const std::shared_ptr<Device>& device,
+    static boost::leaf::result<std::unique_ptr<PipelineLayout>> build(
+        const Device* device,
         const PipelineLayoutInfo& layout_info
     );
 };

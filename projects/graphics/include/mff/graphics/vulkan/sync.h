@@ -33,6 +33,6 @@ struct Concurrent {
  */
 using SharingMode = std::variant<SharingMode_::Exclusive, SharingMode_::Concurrent>;
 
-SharingMode get_sharing_mode(const std::vector<std::shared_ptr<QueueFamily>>& queue_families = {});
+SharingMode get_sharing_mode(const std::vector<const QueueFamily*>& queue_families = {});
 
 }

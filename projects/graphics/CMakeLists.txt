@@ -8,6 +8,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(leaf CONFIG REQUIRED)
+find_package(range-v3 CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME})
 add_library(mff::graphics ALIAS ${PROJECT_NAME})
@@ -29,4 +30,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     fmt::fmt
     unofficial::vulkan-memory-allocator::vulkan-memory-allocator
     zajo::leaf
+    range-v3
 )

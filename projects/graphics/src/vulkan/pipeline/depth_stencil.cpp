@@ -30,17 +30,17 @@ vk::PipelineDepthStencilStateCreateInfo DepthStencil::to_vulkan() const {
     using db_info = std::tuple<bool, float, float>;
     auto[db_enabled, db_start, db_end] = std::visit(
         overloaded{
-            [](DepthBounds_::Disabled d) -> db_info {
+            [](DepthBounds::Disabled d) -> db_info {
                 return std::make_tuple(false, 0.0f, 0.0f);
             },
-            [](DepthBounds_::Dynamic d) -> db_info {
+            [](DepthBounds::Dynamic d) -> db_info {
                 return std::make_tuple(true, 0.0f, 1.0f);
             },
-            [](DepthBounds_::Fixed f) -> db_info {
+            [](DepthBounds::Fixed f) -> db_info {
                 return std::make_tuple(true, f.from, f.to);
             }
         },
-        depth_bounds_test
+        depth_bounds_test.get_inner()
     );
 
     return vk::PipelineDepthStencilStateCreateInfo(

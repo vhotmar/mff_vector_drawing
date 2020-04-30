@@ -4,8 +4,7 @@
 
 namespace mff::vulkan {
 
-
-boost::leaf::result<std::shared_ptr<GraphicsPipeline>> GraphicsPipelineBuilder::build(std::shared_ptr<Device> device) {
+boost::leaf::result<std::unique_ptr<GraphicsPipeline>> GraphicsPipelineBuilder::build(const Device* device) {
     // TODO: missing pipeline layout customization + tesselation/geometry stage
     LEAF_AUTO(layout, PipelineLayout::build(device, vertex_shader.layout.make_union(fragment_shader.layout)));
     // TODO: check that the layout conforms the stages
@@ -97,10 +96,10 @@ boost::leaf::result<std::shared_ptr<GraphicsPipeline>> GraphicsPipelineBuilder::
     );
 
     struct enable_GraphicsPipeline : GraphicsPipeline {};
-    std::shared_ptr<GraphicsPipeline> result = std::make_shared<enable_GraphicsPipeline>();
+    std::unique_ptr<GraphicsPipeline> result = std::make_unique<enable_GraphicsPipeline>();
 
     result->device_ = device;
-    result->pipeline_layout_ = layout;
+    result->pipeline_layout_ = std::move(layout);
     LEAF_AUTO_TO(result->pipeline_,
                  to_result(device->get_handle().createGraphicsPipelineUnique(nullptr, pipeline_info)));
 

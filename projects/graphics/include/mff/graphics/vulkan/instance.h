@@ -29,9 +29,7 @@ struct ApplicationInfo {
 
 // Forward definitions
 class Instance;
-
 class PhysicalDevice;
-
 class Queue;
 
 /**
@@ -40,18 +38,15 @@ class Queue;
  * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap8.html#shaders-scope-queue-family
  */
 class QueueFamily {
-private:
-    std::size_t index_ = -1;
-    vk::QueueFamilyProperties properties_ = {};
-    std::shared_ptr<PhysicalDevice> physical_device_ = nullptr;
-
-    /**
-     * This is implementation specific (user of this API should not be able to create this)
-     */
-    QueueFamily() = default;
-
     friend Instance;
     friend Queue;
+    friend PhysicalDevice;
+
+private:
+    std::size_t index_ = -1;
+    const PhysicalDevice* physical_device_ = nullptr;
+    vk::QueueFamilyProperties properties_ = {};
+
 public:
     /**
      * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#devsandqueues-index
@@ -67,7 +62,7 @@ public:
     /**
      * @return the physical device which owns this QueueFamily
      */
-    std::shared_ptr<PhysicalDevice> get_physical_device() const;
+    const PhysicalDevice* get_physical_device() const;
 
     /**
      * @return true if queues of this family supports graphics operations
@@ -89,10 +84,11 @@ class PhysicalDevice {
     friend class Instance;
 
 private:
-    std::shared_ptr<Instance> instance_ = nullptr;
+    const Instance* instance_;
+    std::size_t index_;
     vk::PhysicalDevice device_ = nullptr;
     vk::PhysicalDeviceProperties properties_ = {};
-    std::vector<QueueFamily> queue_families_ = {};
+    std::vector<std::unique_ptr<QueueFamily>> queue_families_ = {};
     vk::PhysicalDeviceMemoryProperties memory_ = {};
     vk::PhysicalDeviceFeatures features_ = {};
     std::vector<vk::ExtensionProperties> extensions_ = {};
@@ -106,7 +102,7 @@ public:
     /**
      * @return queue families available for this physical device
      */
-    std::vector<QueueFamily> get_queue_families() const;
+    std::vector<const QueueFamily*> get_queue_families() const;
 
     /**
      * @return the actual vulkan handle
@@ -115,7 +111,7 @@ public:
 
     /**
      * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#VkPhysicalDeviceType
-     * @return device type (integreated / discrete / ...)
+     * @return device type (integrated / discrete / ...)
      */
     vk::PhysicalDeviceType get_type() const;
 
@@ -128,12 +124,12 @@ public:
     /**
      * @return instance this physical device belongs to
      */
-    std::shared_ptr<Instance> get_instance();
+    const Instance* get_instance() const;
 
     /**
      * Equality operator
      */
-    inline bool operator==(const PhysicalDevice& rhs);
+    inline bool operator==(const PhysicalDevice& rhs) const;
 };
 
 /**
@@ -143,13 +139,14 @@ public:
  * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap3.html#initialization-instances
  */
 class Instance {
+    friend class PhysicalDevice;
 private:
     std::vector<std::string> extensions_ = {};
     std::vector<std::string> layers_ = {};
     std::optional<ApplicationInfo> info_ = std::nullopt;
     vk::UniqueInstance handle_ = {};
     vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_ = {};
-    std::vector<std::shared_ptr<PhysicalDevice>> physical_devices_ = {};
+    std::vector<std::unique_ptr<PhysicalDevice>> physical_devices_ = {};
 
     Instance() = default;
 
@@ -157,7 +154,7 @@ public:
     /**
      * @return available physical devices on current machine (for current instance)
      */
-    const std::vector<std::shared_ptr<PhysicalDevice>>& get_physical_devices() const;
+    std::vector<const PhysicalDevice*> get_physical_devices() const;
 
     /**
      * @return the actual vk::Instance
@@ -167,7 +164,12 @@ public:
     /**
      * @return layers that were loaded for this specific Instance
      */
-    const std::vector<std::string>& get_loaded_layers();
+    const std::vector<std::string>& get_loaded_layers() const;
+
+    /**
+     * Equality operator
+     */
+    inline bool operator==(const Instance& rhs) const;
 
     /**
      * Build the Instance from specified arguments
@@ -178,13 +180,12 @@ public:
      * @param layers layers to enable for the created instance (they are loaded in the specified order)
      * @return
      */
-    static boost::leaf::result<Instance> build(
+    static boost::leaf::result<std::unique_ptr<Instance>> build(
         std::optional<ApplicationInfo> info,
         std::vector<std::string> extensions,
         std::vector<std::string> layers
     );
 };
-
 
 struct e_extension_not_found {
     std::string value;

@@ -37,7 +37,7 @@ struct DescriptorSetInfo {
  */
 class DescriptorSetLayout {
 private:
-    std::shared_ptr<Device> device_;
+    const Device* device_;
     vk::UniqueDescriptorSetLayout handle_;
 
     DescriptorSetLayout() = default;
@@ -52,9 +52,9 @@ public:
      * @param infos Infos describing the layout
      * @return
      */
-    static boost::leaf::result<std::shared_ptr<DescriptorSetLayout>> build(
-        const std::shared_ptr<Device>& device,
-        const DescriptorSetInfo& info
+    static boost::leaf::result<std::unique_ptr<DescriptorSetLayout>> build(
+        const Device* device,
+        const DescriptorSetInfo& set_info
     );
 };
 

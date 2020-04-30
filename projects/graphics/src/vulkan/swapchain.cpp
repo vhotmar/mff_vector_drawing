@@ -9,23 +9,23 @@
 
 namespace mff::vulkan {
 
-bool Surface::is_supported(const QueueFamily& queue_family) const {
-    auto physical_device = queue_family.get_physical_device()->get_handle();
+bool Surface::is_supported(const QueueFamily* queue_family) const {
+    auto physical_device = queue_family->get_physical_device()->get_handle();
 
     LEAF_DEFAULT(
         result,
         false,
-        to_result(physical_device.getSurfaceSupportKHR(queue_family.get_index(), handle_.get())));
+        to_result(physical_device.getSurfaceSupportKHR(queue_family->get_index(), handle_.get())));
 
     return result;
 }
 
-boost::leaf::result<std::shared_ptr<Surface>> Surface::build(
+boost::leaf::result<std::unique_ptr<Surface>> Surface::build(
     std::shared_ptr<window::Window> window,
-    std::shared_ptr<Instance> instance
+    const Instance* instance
 ) {
     struct enable_Surface : public Surface {};
-    std::shared_ptr<Surface> surface = std::make_shared<enable_Surface>();
+    std::unique_ptr<Surface> surface = std::make_unique<enable_Surface>();
 
     surface->instance_ = instance;
     LEAF_AUTO_TO(surface->handle_, window->create_surface(instance->get_handle()));
@@ -33,8 +33,9 @@ boost::leaf::result<std::shared_ptr<Surface>> Surface::build(
     return surface;
 }
 
-boost::leaf::result<Capabilities>
-Surface::get_capabilities(const std::shared_ptr<PhysicalDevice>& physical_device) const {
+boost::leaf::result<Capabilities> Surface::get_capabilities(
+    const PhysicalDevice* physical_device
+) const {
     auto device_handle = physical_device->get_handle();
 
     LEAF_AUTO(capabilities, to_result(device_handle.getSurfaceCapabilitiesKHR(handle_.get())));
@@ -69,8 +70,8 @@ vk::SwapchainKHR Swapchain::get_handle() const {
 }
 
 boost::leaf::result<std::shared_ptr<Swapchain>> Swapchain::build(
-    std::shared_ptr<Device> device,
-    std::shared_ptr<Surface> surface,
+    const Device* device,
+    const Surface* surface,
     std::uint32_t num_images,
     vk::Format format,
     std::optional<Vector2ui> dimensions,

@@ -14,13 +14,9 @@ struct is_e_type<vk::Result> : public std::true_type {};
 namespace mff {
 
 
-vk::Extent2D to_extent(Vector2ui v) {
-    return vk::Extent2D(v[0], v[1]);
-}
+vk::Extent2D to_extent(Vector2ui v);
 
-vk::Offset2D to_offset(Vector2ui v) {
-    return vk::Offset2D(v[0], v[1]);
-}
+vk::Offset2D to_offset(Vector2ui v);
 
 
 template <typename T>

@@ -21,8 +21,8 @@ std::optional<DescriptorInfo> DescriptorInfo::make_union(const DescriptorInfo& o
     };
 }
 
-boost::leaf::result<std::shared_ptr<DescriptorSetLayout>> DescriptorSetLayout::build(
-    const std::shared_ptr<Device>& device,
+boost::leaf::result<std::unique_ptr<DescriptorSetLayout>> DescriptorSetLayout::build(
+    const Device* device,
     const DescriptorSetInfo& set_info
 ) {
     std::vector<vk::DescriptorSetLayoutBinding> bindings;
@@ -35,7 +35,7 @@ boost::leaf::result<std::shared_ptr<DescriptorSetLayout>> DescriptorSetLayout::b
     auto info = vk::DescriptorSetLayoutCreateInfo({}, bindings.size(), bindings.data());
 
     struct enable_DescriptorSetLayout : public DescriptorSetLayout {};
-    std::shared_ptr<DescriptorSetLayout> desc = std::make_shared<enable_DescriptorSetLayout>();
+    std::unique_ptr<DescriptorSetLayout> desc = std::make_unique<enable_DescriptorSetLayout>();
 
     LEAF_AUTO_TO(desc->handle_, to_result(device->get_handle().createDescriptorSetLayoutUnique(info)));
     desc->device_ = device;

@@ -70,18 +70,18 @@ AttachmentBlend AttachmentBlend::alpha_blending() {
     };
 }
 
-vk::PipelineColorBlendStateCreateInfo Blend::to_vulkan(std::shared_ptr<Subpass> pass) const {
+vk::PipelineColorBlendStateCreateInfo Blend::to_vulkan(const Subpass* pass) const {
     using ba_info = std::vector<vk::PipelineColorBlendAttachmentState>;
     auto blend_attachment_infos = std::visit(
         overloaded{
-            [](AttachmentsBlend_::Individual i) -> ba_info {
+            [](AttachmentsBlend::Individual i) -> ba_info {
                 return mff::map([](auto b) { return b.to_vulkan(); }, i.blends);
             },
-            [&](AttachmentsBlend_::Collective c) -> ba_info {
+            [&](AttachmentsBlend::Collective c) -> ba_info {
                 return ba_info(pass->get_color_attachments_count(), c.blend.to_vulkan());
             }
         },
-        attachments
+        attachments.get_inner()
     );
 
     return vk::PipelineColorBlendStateCreateInfo(
@@ -94,6 +94,10 @@ vk::PipelineColorBlendStateCreateInfo Blend::to_vulkan(std::shared_ptr<Subpass> 
         ? to_array(blend_constants.value())
         : std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
     );
+}
+
+const AttachmentsBlend::type& AttachmentsBlend::get_inner() const {
+    return inner_;
 }
 
 }

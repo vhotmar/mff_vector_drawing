@@ -5,7 +5,7 @@
 
 namespace mff::vulkan {
 
-SharingMode get_sharing_mode(const std::vector<std::shared_ptr<QueueFamily>>& queue_families) {
+SharingMode get_sharing_mode(const std::vector<const QueueFamily*>& queue_families) {
     std::vector<std::uint32_t> uniq_families;
 
     for (const auto& queue_family: queue_families) {

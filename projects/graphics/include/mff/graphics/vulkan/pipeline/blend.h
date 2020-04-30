@@ -39,28 +39,33 @@ struct AttachmentBlend {
     vk::PipelineColorBlendAttachmentState to_vulkan() const;
 };
 
-namespace AttachmentsBlend_ {
-
-/**
- * All the framebuffer attachments will use the same blending.
- */
-struct Collective {
-    AttachmentBlend blend;
-};
-
-/**
- * Each attachment will behave differently.
- */
-struct Individual {
-    std::vector<AttachmentBlend> blends;
-};
-
-}
-
 /**
  * Describes how the blending system should behave.
  */
-using AttachmentsBlend = std::variant<AttachmentsBlend_::Collective, AttachmentsBlend_::Individual>;
+class AttachmentsBlend {
+public:
+    /**
+     * All the framebuffer attachments will use the same blending.
+     */
+    struct Collective {
+        AttachmentBlend blend;
+    };
+
+    /**
+     * Each attachment will behave differently.
+     */
+    struct Individual {
+        std::vector<AttachmentBlend> blends;
+    };
+
+    using type = std::variant<Collective, Individual>;
+
+private:
+    type inner_;
+
+public:
+    const type& get_inner() const;
+};
 
 class Subpass;
 
@@ -80,7 +85,7 @@ struct Blend {
      */
     std::optional<Vector4f> blend_constants;
 
-    vk::PipelineColorBlendStateCreateInfo to_vulkan(std::shared_ptr<Subpass> pass) const;
+    vk::PipelineColorBlendStateCreateInfo to_vulkan(const Subpass* pass) const;
 };
 
 }

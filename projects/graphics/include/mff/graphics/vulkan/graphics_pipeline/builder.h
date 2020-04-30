@@ -17,14 +17,14 @@ namespace mff::vulkan {
 class GraphicsPipelineBuilder;
 
 class GraphicsPipeline {
+    friend class GraphicsPipelineBuilder;
+
 private:
-    std::shared_ptr<Device> device_;
-    std::shared_ptr<PipelineLayout> pipeline_layout_;
+    const Device* device_;
+    std::unique_ptr<PipelineLayout> pipeline_layout_;
     vk::UniquePipeline pipeline_;
 
     GraphicsPipeline() = default;
-
-    friend class GraphicsPipelineBuilder;
 };
 
 class GraphicsPipelineBuilder {
@@ -39,10 +39,10 @@ private:
     vk::PipelineMultisampleStateCreateInfo multisample;
     DepthStencil depth_stencil;
     Blend blend;
-    std::optional<std::shared_ptr<Subpass>> render_pass;
+    std::optional<const Subpass*> render_pass;
 
 public:
-    boost::leaf::result<std::shared_ptr<GraphicsPipeline>> build(std::shared_ptr<Device> device);
+    boost::leaf::result<std::unique_ptr<GraphicsPipeline>> build(const Device* device);
 };
 
 }

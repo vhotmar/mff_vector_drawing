@@ -9,9 +9,10 @@ find_package(Eigen3 CONFIG REQUIRED)
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 find_package(leaf CONFIG REQUIRED)
 
+# add_executable(${PROJECT_NAME} main.cpp renderer.cpp)
 add_executable(${PROJECT_NAME} main.cpp)
 
-add_subdirectory(internal)
+# add_subdirectory(internal)
 add_subdirectory(utils)
 
 target_link_libraries(${PROJECT_NAME}
@@ -21,7 +22,6 @@ target_link_libraries(${PROJECT_NAME}
     Vulkan::Vulkan
     glfw
     spdlog::spdlog
-    # shaderc
     Eigen3::Eigen
     fmt::fmt
     unofficial::vulkan-memory-allocator::vulkan-memory-allocator
@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} INTERFACE
     ${Boost_INCLUDE_DIRS}
+    ${SHADERC_INCLUDE_DIR}
     )
 
 

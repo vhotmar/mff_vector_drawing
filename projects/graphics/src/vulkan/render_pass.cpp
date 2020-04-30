@@ -9,11 +9,11 @@
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
+boost::leaf::result<std::unique_ptr<RenderPass>> RenderPass::build(
+    const Device* device,
     const std::vector<AttachmentDescription>& attachments,
     const std::vector<SubpassDescription>& subpasses,
-    const std::vector<SubpassDependency>& dependencies,
-    const std::shared_ptr<Device>& device
+    const std::vector<SubpassDependency>& dependencies
 ) {
     // to build the RenderPass we need to create References between the individual Subpasses and
     // Attachments
@@ -97,7 +97,7 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
     );
 
     struct enable_RenderPass : public RenderPass {};
-    std::shared_ptr<RenderPass> render_pass = std::make_shared<enable_RenderPass>();
+    std::unique_ptr<RenderPass> render_pass = std::make_unique<enable_RenderPass>();
 
     render_pass->device_ = device;
     render_pass->attachments_ = attachments;
@@ -106,13 +106,13 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPass::build(
     index = 0;
     for (const auto& subpass_description: subpasses) {
         struct enable_Subpass : public Subpass {};
-        std::shared_ptr<Subpass> subpass = std::make_shared<enable_Subpass>();
+        std::unique_ptr<Subpass> subpass = std::make_unique<enable_Subpass>();
 
-        subpass->render_pass_ = render_pass;
+        subpass->render_pass_ = render_pass.get();
         subpass->description_ = subpass_description;
         subpass->subpass_id_ = index++;
 
-        render_pass->subpasses_.push_back(subpass);
+        render_pass->subpasses_.push_back(std::move(subpass));
     }
 
     LEAF_AUTO_TO(render_pass->handle_, to_result(device->get_handle().createRenderPassUnique(info)));
@@ -124,8 +124,8 @@ vk::RenderPass RenderPass::get_handle() const {
     return handle_.get();
 }
 
-std::optional<std::shared_ptr<Subpass>> RenderPass::get_subpass(std::uint32_t index) const {
-    return subpasses_[index];
+std::optional<const Subpass*> RenderPass::get_subpass(std::uint32_t index) const {
+    return subpasses_[index].get();
 }
 
 std::optional<std::size_t> RenderPassBuilder::get_attachment_offset(const Id& id) {
@@ -178,7 +178,7 @@ RenderPassBuilder& RenderPassBuilder::add_pass(
     return *this;
 }
 
-boost::leaf::result<std::shared_ptr<RenderPass>> RenderPassBuilder::build(const std::shared_ptr<Device>& device) {
+boost::leaf::result<std::unique_ptr<RenderPass>> RenderPassBuilder::build(const Device* device) {
     std::vector<AttachmentDescription> attachments;
     std::vector<SubpassDescription> passes;
     std::vector<SubpassDependency> dependencies;
@@ -328,7 +328,7 @@ boost::leaf::result<std::shared_ptr<RenderPass>> RenderPassBuilder::build(const 
         index++;
     }
 
-    return RenderPass::build(attachments, passes, dependencies, device);
+    return RenderPass::build(device, attachments, passes, dependencies);
 }
 
 }

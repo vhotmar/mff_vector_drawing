@@ -18,11 +18,11 @@ class RenderPass;
 /**
  * Class identifying concrete subpass within RenderPass.
  *
- * This does not have vulkan equivalet (it is simple construct to identify concrete subpass).
+ * This does not have vulkan equivalent (it is simple construct to identify concrete subpass).
  */
 class Subpass {
 private:
-    std::shared_ptr<RenderPass> render_pass_ = nullptr;
+    const RenderPass* render_pass_ = nullptr;
     SubpassDescription description_ = {};
     std::uint32_t subpass_id_ = -1;
 
@@ -37,7 +37,7 @@ public:
 
     vk::SampleCountFlagBits get_samples() const;
 
-    std::shared_ptr<RenderPass> get_render_pass() const;
+    const RenderPass* get_render_pass() const;
 
     std::uint32_t get_index() const;
 };
@@ -50,9 +50,9 @@ public:
 class RenderPass {
 private:
     vk::UniqueRenderPass handle_;
-    std::shared_ptr<Device> device_;
+    const Device* device_;
     std::vector<AttachmentDescription> attachments_;
-    std::vector<std::shared_ptr<Subpass>> subpasses_;
+    std::vector<std::unique_ptr<Subpass>> subpasses_;
 
 public:
     /**
@@ -63,16 +63,16 @@ public:
      * @param device
      * @return RenderPass build from the parameters
      */
-    static boost::leaf::result<std::shared_ptr<RenderPass>> build(
+    static boost::leaf::result<std::unique_ptr<RenderPass>> build(
+        const Device* device,
         const std::vector<AttachmentDescription>& attachments,
-        const std::vector<SubpassDescription>& infos,
-        const std::vector<SubpassDependency>& dependencies,
-        const std::shared_ptr<Device>& device
+        const std::vector<SubpassDescription>& subpasses,
+        const std::vector<SubpassDependency>& dependencies
     );
 
     vk::RenderPass get_handle() const;
 
-    std::optional<std::shared_ptr<Subpass>> get_subpass(std::uint32_t index) const;
+    std::optional<const Subpass*> get_subpass(std::uint32_t index) const;
 };
 
 /**
@@ -149,7 +149,7 @@ public:
      * @param device The device where RenderPass should be built
      * @return result with finalized RenderPass
      */
-    boost::leaf::result<std::shared_ptr<RenderPass>> build(const std::shared_ptr<Device>& device);
+    boost::leaf::result<std::unique_ptr<RenderPass>> build(const Device* device);
 };
 
 

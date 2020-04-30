@@ -9,7 +9,7 @@ namespace mff::parser_combinator::traits {
 template <typename T>
 class InputIteratorTrait {
 public:
-    static_assert(sizeof(T) == -1, "You have to have specialization for input_iter");
+    static_assert(sizeof(T) == -1, "You have to have specialization for InputIteratorTrait");
 };
 
 template <>

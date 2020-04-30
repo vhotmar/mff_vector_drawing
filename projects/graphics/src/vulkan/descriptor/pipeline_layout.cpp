@@ -6,11 +6,11 @@
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::shared_ptr<PipelineLayout>> PipelineLayout::build(
-    const std::shared_ptr<Device>& device,
+boost::leaf::result<std::unique_ptr<PipelineLayout>> PipelineLayout::build(
+    const Device* device,
     const PipelineLayoutInfo& layout_info
 ) {
-    std::vector<std::shared_ptr<DescriptorSetLayout>> layouts;
+    std::vector<std::unique_ptr<DescriptorSetLayout>> layouts;
 
     for (const auto& info: layout_info.layout_infos) {
         LEAF_AUTO(item, DescriptorSetLayout::build(device, info));
@@ -26,7 +26,7 @@ boost::leaf::result<std::shared_ptr<PipelineLayout>> PipelineLayout::build(
     auto info = vk::PipelineLayoutCreateInfo({}, layout_handles.size(), layout_handles.data(), 0, nullptr);
 
     struct enable_PipelineLayout : public PipelineLayout {};
-    std::shared_ptr<PipelineLayout> result = std::make_shared<enable_PipelineLayout>();
+    std::unique_ptr<PipelineLayout> result = std::make_unique<enable_PipelineLayout>();
 
     result->device_ = device;
     LEAF_AUTO_TO(result->handle_, to_result(device->get_handle().createPipelineLayoutUnique(info)));

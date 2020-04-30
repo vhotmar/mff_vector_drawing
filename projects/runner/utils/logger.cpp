@@ -14,16 +14,7 @@ std::shared_ptr<spdlog::logger> setup_main_logging() {
     return spdlog::stdout_color_mt("main");
 }
 
-std::shared_ptr<spdlog::logger> setup_vulkan_logging() {
-    auto logger = spdlog::stdout_color_mt("vulkan");
-
-    logger->set_level(spdlog::level::trace);
-
-    return logger;
-}
-
 std::shared_ptr<spdlog::logger> system = setup_system_logging();
 std::shared_ptr<spdlog::logger> main = setup_main_logging();
-std::shared_ptr<spdlog::logger> vulkan = setup_vulkan_logging();
 
 }

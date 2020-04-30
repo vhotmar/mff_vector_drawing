@@ -3,6 +3,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <range/v3/all.hpp>
 #include <vector>
 
 #include <mff/algorithms.h>
@@ -15,7 +16,7 @@
 
 namespace mff::vulkan {
 
-boost::leaf::result<Instance> Instance::build(
+boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
     std::optional<ApplicationInfo> info,
     std::vector<std::string> extensions,
     std::vector<std::string> layers
@@ -128,7 +129,8 @@ boost::leaf::result<Instance> Instance::build(
     );
 
     // we need this so std::make_shared works
-    Instance instance;
+    struct enable_Instance : public Instance {};
+    std::unique_ptr<Instance> instance = std::make_unique<enable_Instance>();
 
     if (constants::kVULKAN_DEBUG) {
         vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
@@ -136,36 +138,41 @@ boost::leaf::result<Instance> Instance::build(
             get_debug_utils_create_info()
         };
 
-        LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>())));
+        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(chain.get<vk::InstanceCreateInfo>())));
     } else {
-        LEAF_AUTO_TO(instance.handle_, to_result(vk::createInstanceUnique(create_instance_info)));
+        LEAF_AUTO_TO(instance->handle_, to_result(vk::createInstanceUnique(create_instance_info)));
     }
 
     // add instance functions to dispatcher
-    init_dispatcher(instance.handle_.get());
+    init_dispatcher(instance->handle_.get());
+
+    if (kVULKAN_DEBUG) {
+        auto create_info = get_debug_utils_create_info();
+        LEAF_AUTO_TO(debug_utils_messenger_, to_result(instance_->createDebugUtilsMessengerEXTUnique(create_info)));
+    }
 
     if (constants::kVULKAN_DEBUG) {
         auto create_info = get_debug_utils_create_info();
         LEAF_AUTO_TO(
-            instance.debug_utils_messenger_,
-            to_result(instance.handle_->createDebugUtilsMessengerEXTUnique(create_info)));
+            instance->debug_utils_messenger_,
+            to_result(instance->handle_->createDebugUtilsMessengerEXTUnique(create_info)));
     }
 
-    instance.extensions_ = extensions;
-    instance.layers_ = layers;
-    instance.info_ = info;
+    instance->extensions_ = extensions;
+    instance->layers_ = layers;
+    instance->info_ = info;
 
     // list all physical devices
-    LEAF_AUTO(physical_devices, to_result(instance.handle_->enumeratePhysicalDevices()));
-    instance.physical_devices_.reserve(physical_devices.size());
+    LEAF_AUTO(physical_devices, to_result(instance->handle_->enumeratePhysicalDevices()));
+    instance->physical_devices_.reserve(physical_devices.size());
 
     // initialize physical devices
     for (auto physical_device: physical_devices) {
         // we need this so std::make_shared works
         struct enable_PhysicalDevice : PhysicalDevice {};
-        auto result = std::make_shared<enable_PhysicalDevice>();
+        std::unique_ptr<PhysicalDevice> result = std::make_unique<enable_PhysicalDevice>();
 
-        result->instance_ = instance;
+        result->instance_ = instance.get();
         result->device_ = physical_device;
         result->properties_ = physical_device.getProperties();
         result->memory_ = physical_device.getMemoryProperties();
@@ -178,13 +185,14 @@ boost::leaf::result<Instance> Instance::build(
 
         int index = 0;
         for (const auto& properties: family_properties) {
-            QueueFamily family;
+            struct enable_QueueFamily : QueueFamily {};
+            std::unique_ptr<QueueFamily> family = std::make_unique<enable_QueueFamily>();
 
-            family.physical_device_ = result;
-            family.properties_ = properties;
-            family.index_ = index++;
+            family->physical_device_ = result.get();
+            family->properties_ = properties;
+            family->index_ = index++;
 
-            result->queue_families_.push_back(family);
+            result->queue_families_.push_back(std::move(family));
         }
 
         instance->physical_devices_.push_back(std::move(result));
@@ -193,16 +201,22 @@ boost::leaf::result<Instance> Instance::build(
     return std::move(instance);
 }
 
-const std::vector<std::shared_ptr<PhysicalDevice>>& Instance::get_physical_devices() const {
-    return physical_devices_;
+std::vector<const PhysicalDevice*> Instance::get_physical_devices() const {
+    return physical_devices_
+        | ranges::views::transform([](const auto& item) -> const PhysicalDevice* { return item.get(); })
+        | ranges::to<std::vector>();
 }
 
 const vk::Instance& Instance::get_handle() const {
     return handle_.get();
 }
 
-const std::vector<std::string>& Instance::get_loaded_layers() {
+const std::vector<std::string>& Instance::get_loaded_layers() const {
     return layers_;
+}
+
+bool Instance::operator==(const Instance& rhs) const {
+    return handle_.get() == rhs.handle_.get();
 }
 
 vk::PhysicalDeviceType PhysicalDevice::get_type() const {
@@ -213,15 +227,17 @@ vk::PhysicalDevice PhysicalDevice::get_handle() const {
     return device_;
 }
 
-std::shared_ptr<Instance> PhysicalDevice::get_instance() {
+const Instance* PhysicalDevice::get_instance() const {
     return instance_;
 }
 
-std::vector<QueueFamily> PhysicalDevice::get_queue_families() const {
-    return queue_families_;
+std::vector<const QueueFamily*> PhysicalDevice::get_queue_families() const {
+    return queue_families_
+        | ranges::views::transform([](const auto& item) -> const QueueFamily* { return item.get(); })
+        | ranges::to<std::vector>();
 }
 
-bool PhysicalDevice::operator==(const PhysicalDevice& rhs) {
+bool PhysicalDevice::operator==(const PhysicalDevice& rhs) const {
     return device_ == rhs.device_ && instance_ == rhs.instance_;
 }
 
@@ -241,7 +257,7 @@ std::uint32_t QueueFamily::get_index() const {
     return index_;
 }
 
-std::shared_ptr<PhysicalDevice> QueueFamily::get_physical_device() const {
+const PhysicalDevice* QueueFamily::get_physical_device() const {
     return physical_device_;
 }
 
