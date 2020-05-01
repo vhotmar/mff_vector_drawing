@@ -5,8 +5,9 @@
 #include <variant>
 #include <vector>
 
-#include <mff/graphics/vulkan/vulkan.h>
+#include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/vulkan/instance.h>
+#include <mff/graphics/vulkan/vulkan.h>
 
 namespace mff::vulkan {
 
@@ -34,5 +35,19 @@ struct Concurrent {
 using SharingMode = std::variant<SharingMode_::Exclusive, SharingMode_::Concurrent>;
 
 SharingMode get_sharing_mode(const std::vector<const QueueFamily*>& queue_families = {});
+
+class Semaphore;
+using UniqueSemaphore = std::unique_ptr<Semaphore>;
+
+class Semaphore {
+public:
+    static boost::leaf::result<UniqueSemaphore> build(const Device* device);
+
+private:
+    Semaphore() = default;
+
+    const Device* device_ = nullptr;
+    vk::UniqueSemaphore handle_ = {};
+};
 
 }

@@ -13,6 +13,7 @@
 #include <mff/graphics/math.h>
 #include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/dispatcher.h>
+#include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window.h>
 #include <Eigen/Dense>
@@ -706,7 +707,8 @@ public:
         std::unique_ptr<BaseEngine> engine = std::make_unique<enable_BaseEngine>();
 
         engine->window_ = window;
-        engine->instance_extensions_ = window_->get_required_extensions();
+
+        LEAF_AUTO_TO(engine->instance_, mff::graphics::Instance::build());
     }
 
 private:
@@ -717,15 +719,8 @@ private:
      */
     std::shared_ptr<mff::window::Window> window_ = nullptr;
 
-    /**
-     * Instance enabled extensions
-     */
-    std::vector<std::string> instance_extensions_ = {};
+    mff::graphics::UniqueInstance instance_ = nullptr;
 
-    /**
-     * Instance enabled layers
-     */
-    std::vector<std::string> instance_layers_;
 
     /**
      * Required device extensions
@@ -895,83 +890,6 @@ private:
         return {};
     }
 
-    boost::leaf::result<void> init_surface() {
-        LEAF_AUTO_TO(surface_, window_->create_surface(instance_.get()));
-
-        return {};
-    }
-
-    boost::leaf::result<void> pick_physical_device() {
-        LEAF_AUTO(devices, to_result(instance_->enumeratePhysicalDevices()));
-
-        auto physical_device = mff::find_if(
-            devices,
-            [&](const auto& physical_device) {
-                return is_device_suitable(
-                    physical_device,
-                    surface_.get(),
-                    device_extensions_
-                );
-            }
-        );
-
-        if (!physical_device) return boost::leaf::new_error();
-
-        physical_device_ = *(physical_device.value());
-
-        return {};
-    }
-
-    boost::leaf::result<void> init_logical_device() {
-        auto layers_c = to_pointer_char_data(instance_layers_);
-        auto extensions_c = to_pointer_char_data(device_extensions_);
-
-        auto indices = find_queue_families(physical_device_, surface_.get());
-        std::set<uint32_t> uniq_families = {indices.graphics_family.value(), indices.present_family.value()};
-
-        std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-        std::vector<std::vector<std::float_t>> priorities_owner;
-        priorities_owner.reserve(uniq_families.size());
-
-        for (const auto& queue_family: uniq_families) {
-            priorities_owner.emplace_back(std::vector<std::float_t>{1.0f});
-            queue_create_infos.push_back(
-                vk::DeviceQueueCreateInfo(
-                    {},
-                    queue_family,
-                    priorities_owner.back().size(),
-                    priorities_owner.back().data()));
-        }
-
-        auto device_create_info = vk::DeviceCreateInfo(
-            {},
-            queue_create_infos.size(),
-            queue_create_infos.data(),
-            layers_c.size(),
-            layers_c.data(),
-            extensions_c.size(),
-            extensions_c.data());
-
-        LEAF_AUTO_TO(device_, to_result(physical_device_.createDeviceUnique(device_create_info)));
-
-        graphics_queue_ = {device_->getQueue(indices.graphics_family.value(), 0), indices.graphics_family.value()};
-        present_queue_ = {device_->getQueue(indices.present_family.value(), 0), indices.present_family.value()};
-        queue_family_indices_ = {uniq_families.begin(), uniq_families.end()};
-
-        return {};
-    }
-
-    boost::leaf::result<void> init_allocator() {
-        VmaAllocatorCreateInfo info{};
-
-        info.instance = instance_.get();
-        info.device = device_.get();
-        info.physicalDevice = physical_device_;
-
-        LEAF_AUTO_TO(allocator_, vma::Allocator::build(info));
-
-        return {};
-    }
 
     boost::leaf::result<void> init_swapchain() {
         auto swapchain_support = query_swapchain_support(physical_device_, surface_.get()).value();

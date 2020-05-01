@@ -28,6 +28,8 @@ boost::leaf::result<T> to_result(vk::ResultValue<T> vk_result) {
     return std::move(vk_result.value);
 }
 
+boost::leaf::result<void> to_result(VkResult vk_result);
+
 namespace utils {
 
 template <typename TContainer>

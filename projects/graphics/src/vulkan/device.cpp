@@ -4,15 +4,14 @@
 #include <utility>
 
 #include <mff/algorithms.h>
+#include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/dispatcher.h>
-
-#include "../utils.h"
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_ptr<Queue>>>> Device::build(
+boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::build(
     const PhysicalDevice* physical_device,
-    const std::vector<QueueFamily>& queue_families,
+    const std::vector<const QueueFamily*>& queue_families,
     const std::vector<std::string>& extensions
 ) {
     auto instance = physical_device->get_instance();
@@ -22,7 +21,7 @@ boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_
     // TODO: check whether the extension is supported
     auto extensions_c = utils::to_pointer_char_data(extensions);
 
-    std::vector<QueueFamily> uniq_families;
+    std::vector<const QueueFamily*> uniq_families;
     std::vector<std::size_t> original_to_uniq;
     original_to_uniq.reserve(queue_families.size());
 
@@ -43,11 +42,11 @@ boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_
     priorities_owner.reserve(uniq_families.size());
 
     for (const auto& queue_family: uniq_families) {
-        priorities_owner.emplace_back(std::vector<float>(queue_family.get_queues_count(), 0.5f));
+        priorities_owner.emplace_back(std::vector<float>(queue_family->get_queues_count(), 1.0f));
         queue_create_infos.push_back(
             vk::DeviceQueueCreateInfo(
                 {},
-                queue_family.get_index(),
+                queue_family->get_index(),
                 priorities_owner.back().size(),
                 priorities_owner.back().data()));
     }
@@ -75,21 +74,18 @@ boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_
 
     std::vector<std::shared_ptr<Queue>> uniq_queues = mff::map(
         [&](auto queue_family) {
-            auto count = queue_family.get_queues_count();
+            auto count = queue_family->get_queues_count();
             std::vector<vk::Queue> queues;
             queues.reserve(count);
 
             for (std::size_t i = 0; i < count; i++) {
-                queues.push_back(device->handle_->getQueue(queue_family.get_index(), i));
+                queues.push_back(device->handle_->getQueue(queue_family->get_index(), i));
             }
 
-            struct enable_Queue : public Queue {
-                enable_Queue(QueueFamily family)
-                    : Queue(family) {
-                }
-            };
-            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>(queue_family);
+            struct enable_Queue: public Queue {};
+            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>();
 
+            queue->queue_family_ = queue_family;
             queue->device_ = device.get();
             queue->queues_ = std::move(queues);
 
@@ -104,6 +100,8 @@ boost::leaf::result<std::tuple<std::unique_ptr<Device>, std::vector<std::shared_
     for (auto index: original_to_uniq) {
         output_queues.push_back(uniq_queues[index]);
     }
+
+    LEAF_AUTO_TO(device->allocator_, vma::Allocator::build(device.get()));
 
     return std::make_tuple(std::move(device), std::move(output_queues));
 }
@@ -124,8 +122,28 @@ vk::Device Device::get_handle() const {
     return handle_.get();
 }
 
-Queue::Queue(QueueFamily family)
-    : queue_family_(family) {
+boost::leaf::result<const CommandPool*> Device::get_command_pool(const QueueFamily* queue_family) {
+    auto id = queue_family->get_index();
+
+    if (!mff::has(command_pools_, id)) {
+        LEAF_AUTO(command_pool, CommandPool::build(this, queue_family));
+
+        command_pools_.emplace(id, std::move(command_pool));
+    }
+
+    return command_pools_[id].get();
+}
+
+const vma::Allocator* Device::get_allocator() const {
+    return allocator_.get();
+}
+
+const vk::Queue& Queue::get_handle() const {
+    return queues_.front();
+}
+
+const QueueFamily* Queue::get_queue_family() const {
+    return queue_family_;
 }
 
 }

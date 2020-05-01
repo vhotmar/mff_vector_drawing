@@ -1,6 +1,6 @@
 #include <mff/graphics/vulkan/descriptor/descriptor.h>
 
-#include "../../utils.h"
+#include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
 

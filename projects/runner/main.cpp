@@ -7,7 +7,7 @@
 #include <mff/graphics/window.h>
 
 #include "./utils/logger.h"
-#include "./renderer.h"
+#include "./renderer2.h"
 
 boost::leaf::result<void> run() {
     mff::logger::vulkan = mff::logger::setup_vulkan_logging();
@@ -19,9 +19,12 @@ boost::leaf::result<void> run() {
         .with_title("My app")
         .build(&event_loop));
 
-    Renderer renderer(window);
+    LEAF_AUTO(engine, VulkanEngine::build(window));
+    LEAF_AUTO(presenter, Presenter::build(engine.get()));
 
-    LEAF_CHECK(renderer.init());
+    // Renderer renderer(window);
+
+    // LEAF_CHECK(renderer.init());
 
     event_loop.run(
         [&](auto event) {

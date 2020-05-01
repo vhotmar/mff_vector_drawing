@@ -1,6 +1,6 @@
 #include <mff/graphics/vulkan/graphics_pipeline/builder.h>
 
-#include "../../utils.h"
+#include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
 

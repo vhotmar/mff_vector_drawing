@@ -3,7 +3,7 @@
 #include <mff/algorithms.h>
 #include <mff/utils.h>
 
-#include "../../utils.h"
+#include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
 

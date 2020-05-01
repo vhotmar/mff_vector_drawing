@@ -8,15 +8,14 @@
 
 #include <mff/algorithms.h>
 #include <mff/graphics/constants.h>
+#include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/dispatcher.h>
 #include <mff/graphics/vulkan/debug.h>
 #include <mff/optional.h>
 
-#include "../utils.h"
-
 namespace mff::vulkan {
 
-boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
+boost::leaf::result<UniqueInstance> Instance::build(
     std::optional<ApplicationInfo> info,
     std::vector<std::string> extensions,
     std::vector<std::string> layers
@@ -53,14 +52,14 @@ boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
 
         if (!has_debug_extension) {
             // we are in debug but extension not found
-            return boost::leaf::new_error(create_instance_error_code::debug_extension_not_found);
+            return LEAF_NEW_ERROR(create_instance_error_code::debug_extension_not_found);
         }
     }
 
     // check whether we can use the extensions
     for (const auto& extension: extensions) {
         if (!has_extension(extension)) {
-            return boost::leaf::new_error(
+            return LEAF_NEW_ERROR(
                 create_instance_error_code::extension_not_found_error,
                 e_extension_not_found{extension}
             );
@@ -95,14 +94,14 @@ boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
 
         if (!has_debug_layer) {
             // we are in debug but debug layer not found
-            return boost::leaf::new_error(create_instance_error_code::debug_layer_not_found);
+            return LEAF_NEW_ERROR(create_instance_error_code::debug_layer_not_found);
         }
     }
 
     // check whether we can use the layers
     for (const auto& layer: layers) {
         if (!has_layer(layer)) {
-            return boost::leaf::new_error(
+            return LEAF_NEW_ERROR(
                 create_instance_error_code::layer_not_found_error,
                 e_layer_not_found{layer}
             );
@@ -130,7 +129,7 @@ boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
 
     // we need this so std::make_shared works
     struct enable_Instance : public Instance {};
-    std::unique_ptr<Instance> instance = std::make_unique<enable_Instance>();
+    UniqueInstance instance = std::make_unique<enable_Instance>();
 
     if (constants::kVULKAN_DEBUG) {
         vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
@@ -145,11 +144,6 @@ boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
 
     // add instance functions to dispatcher
     init_dispatcher(instance->handle_.get());
-
-    if (kVULKAN_DEBUG) {
-        auto create_info = get_debug_utils_create_info();
-        LEAF_AUTO_TO(debug_utils_messenger_, to_result(instance_->createDebugUtilsMessengerEXTUnique(create_info)));
-    }
 
     if (constants::kVULKAN_DEBUG) {
         auto create_info = get_debug_utils_create_info();
@@ -173,7 +167,7 @@ boost::leaf::result<std::unique_ptr<Instance>> Instance::build(
         std::unique_ptr<PhysicalDevice> result = std::make_unique<enable_PhysicalDevice>();
 
         result->instance_ = instance.get();
-        result->device_ = physical_device;
+        result->handle_ = physical_device;
         result->properties_ = physical_device.getProperties();
         result->memory_ = physical_device.getMemoryProperties();
         result->features_ = physical_device.getFeatures();
@@ -224,7 +218,7 @@ vk::PhysicalDeviceType PhysicalDevice::get_type() const {
 }
 
 vk::PhysicalDevice PhysicalDevice::get_handle() const {
-    return device_;
+    return handle_;
 }
 
 const Instance* PhysicalDevice::get_instance() const {
@@ -238,11 +232,54 @@ std::vector<const QueueFamily*> PhysicalDevice::get_queue_families() const {
 }
 
 bool PhysicalDevice::operator==(const PhysicalDevice& rhs) const {
-    return device_ == rhs.device_ && instance_ == rhs.instance_;
+    return handle_ == rhs.handle_ && instance_ == rhs.instance_;
 }
 
 const std::vector<vk::ExtensionProperties>& PhysicalDevice::get_extensions() const {
     return extensions_;
+}
+
+bool PhysicalDevice::is_extension_supported(const std::string& name) const {
+    return mff::contains_if(
+        extensions_,
+        [&](auto extension) { return extension.extensionName == name; }
+    );
+}
+
+bool PhysicalDevice::are_extensions_supported(const std::vector<std::string>& names) const {
+    return ranges::all_of(
+        names,
+        [&](const std::string& extension_name) {
+            return is_extension_supported(extension_name);
+        }
+    );
+}
+
+std::optional<vk::Format> PhysicalDevice::find_supported_format(
+    const std::vector<vk::Format>& candidates,
+    vk::FormatFeatureFlags features,
+    vk::ImageTiling tiling
+) const {
+    auto i = ranges::find_if(
+        candidates,
+        [&](const auto& format) {
+            auto props = handle_.getFormatProperties(format);
+
+            if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
+                return true;
+            }
+
+            if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+                return true;
+            }
+
+            return false;
+        }
+    );
+
+    if (i != ranges::end(candidates)) return *i;
+
+    return std::nullopt;
 }
 
 std::uint32_t QueueFamily::get_queues_count() const {
@@ -251,6 +288,14 @@ std::uint32_t QueueFamily::get_queues_count() const {
 
 bool QueueFamily::supports_graphics() const {
     return (bool) (properties_.queueFlags & vk::QueueFlagBits::eGraphics);
+}
+
+bool QueueFamily::supports_compute() const {
+    return (bool) (properties_.queueFlags & vk::QueueFlagBits::eCompute);
+}
+
+bool QueueFamily::supports_transfer() const {
+    return (bool) (properties_.queueFlags & vk::QueueFlagBits::eTransfer);
 }
 
 std::uint32_t QueueFamily::get_index() const {

@@ -4,8 +4,7 @@
 
 #include <mff/algorithms.h>
 #include <mff/optional.h>
-
-#include "../utils.h"
+#include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
 
@@ -239,7 +238,7 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPassBuilder::build(const 
         }
 
         if (!initial_layout || !final_layout) {
-            return boost::leaf::new_error(build_render_pass_error_code::missing_initial_or_final_layout);
+            return LEAF_NEW_ERROR(build_render_pass_error_code::missing_initial_or_final_layout);
         }
 
         attachments.push_back(
@@ -291,7 +290,7 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPassBuilder::build(const 
         auto resolves = get_references(pass.resolve_attachments, vk::ImageLayout::eColorAttachmentOptimal);
 
         if (!colors || !inputs || !resolves) {
-            return boost::leaf::new_error(build_render_pass_error_code::invalid_id_in_subpass_definition);
+            return LEAF_NEW_ERROR(build_render_pass_error_code::invalid_id_in_subpass_definition);
         }
 
         std::optional<AttachmentReference> depth = std::nullopt;

@@ -17,5 +17,9 @@
 
 #define LEAF_DEFAULT(v, d, r)\
     static_assert(::boost::leaf::is_result_type<typename std::decay<decltype(r)>::type>::value, "LEAF_AUTO requires a result type");\
-    auto && _r_##v = r;\
-    auto && v = !_r_##v ? d : std::move(_r_##v.value())
+    auto && v = !r ? d : std::move(r.value())
+
+#define LEAF_CHECK_OPTIONAL(v, r)\
+    if (!r)\
+        return LEAF_NEW_ERROR();\
+    auto && v = std::move(r.value());

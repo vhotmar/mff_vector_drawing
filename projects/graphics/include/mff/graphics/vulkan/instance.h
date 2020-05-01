@@ -42,11 +42,6 @@ class QueueFamily {
     friend Queue;
     friend PhysicalDevice;
 
-private:
-    std::size_t index_ = -1;
-    const PhysicalDevice* physical_device_ = nullptr;
-    vk::QueueFamilyProperties properties_ = {};
-
 public:
     /**
      * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap4.html#devsandqueues-index
@@ -70,9 +65,26 @@ public:
     bool supports_graphics() const;
 
     /**
+     * @return true if queues of this family supports compute operations
+     */
+    bool supports_compute() const;
+
+    /**
+     * @return true if queues of this family supports transform operations
+     */
+    bool supports_transfer() const;
+
+    /**
      * Equality operator
      */
     bool operator==(const QueueFamily& rhs) const;
+
+private:
+    QueueFamily() = default;
+
+    std::size_t index_ = -1;
+    const PhysicalDevice* physical_device_ = nullptr;
+    vk::QueueFamilyProperties properties_ = {};
 };
 
 /**
@@ -84,9 +96,9 @@ class PhysicalDevice {
     friend class Instance;
 
 private:
-    const Instance* instance_;
-    std::size_t index_;
-    vk::PhysicalDevice device_ = nullptr;
+    const Instance* instance_ = nullptr;
+    std::size_t index_ = -1;
+    vk::PhysicalDevice handle_ = nullptr;
     vk::PhysicalDeviceProperties properties_ = {};
     std::vector<std::unique_ptr<QueueFamily>> queue_families_ = {};
     vk::PhysicalDeviceMemoryProperties memory_ = {};
@@ -122,15 +134,45 @@ public:
     const std::vector<vk::ExtensionProperties>& get_extensions() const;
 
     /**
+     * Check if extension is supported
+     * @param name the name of the extension
+     * @return is this extension supported?
+     */
+    bool is_extension_supported(const std::string& name) const;
+
+    /**
+     * Check if all provided extensions are supported
+     * @param names the names of the extensions
+     * @return are those extensions supported?
+     */
+    bool are_extensions_supported(const std::vector<std::string>& names) const;
+
+    /**
      * @return instance this physical device belongs to
      */
     const Instance* get_instance() const;
+
+    /**
+     * Get format from candidates which has specified features
+     * @param candidates candidates to consider
+     * @param features features which we require from the format
+     * @param tiling image tiling used with format (eOptimal is the one
+     * @return the supported format or std::nullopt
+     */
+    std::optional<vk::Format> find_supported_format(
+        const std::vector<vk::Format>& candidates,
+        vk::FormatFeatureFlags features,
+        vk::ImageTiling tiling = vk::ImageTiling::eOptimal
+    ) const;
 
     /**
      * Equality operator
      */
     inline bool operator==(const PhysicalDevice& rhs) const;
 };
+
+using UniqueInstance = std::unique_ptr<Instance>;
+using UniquePhysicalDevice = std::unique_ptr<PhysicalDevice>;
 
 /**
  * Vulkan instance (representing context instead of having global one) it is somewhat the
@@ -146,7 +188,7 @@ private:
     std::optional<ApplicationInfo> info_ = std::nullopt;
     vk::UniqueInstance handle_ = {};
     vk::UniqueDebugUtilsMessengerEXT debug_utils_messenger_ = {};
-    std::vector<std::unique_ptr<PhysicalDevice>> physical_devices_ = {};
+    std::vector<UniquePhysicalDevice> physical_devices_ = {};
 
     Instance() = default;
 
@@ -180,7 +222,7 @@ public:
      * @param layers layers to enable for the created instance (they are loaded in the specified order)
      * @return
      */
-    static boost::leaf::result<std::unique_ptr<Instance>> build(
+    static boost::leaf::result<UniqueInstance> build(
         std::optional<ApplicationInfo> info,
         std::vector<std::string> extensions,
         std::vector<std::string> layers
