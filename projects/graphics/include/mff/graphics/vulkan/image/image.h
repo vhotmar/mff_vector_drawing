@@ -6,6 +6,7 @@
 #include <mff/graphics/vulkan/sync.h>
 #include <mff/graphics/vulkan/swapchain.h>
 #include <mff/graphics/vulkan/vulkan.h>
+#include <mff/utils.h>
 
 namespace mff::vulkan {
 
@@ -33,6 +34,11 @@ struct Dim3d {
 
 using ImageDimensions = std::variant<ImageDimensions_::Dim1d, ImageDimensions_::Dim2d, ImageDimensions_::Dim3d>;
 
+std::uint32_t get_width(const ImageDimensions& id);
+std::uint32_t get_height(const ImageDimensions& id);
+std::uint32_t get_depth(const ImageDimensions& id);
+std::uint32_t get_array_layers(const ImageDimensions& id);
+
 class UnsafeImage;
 
 using UniqueUnsafeImage = std::unique_ptr<UnsafeImage>;
@@ -42,11 +48,8 @@ public:
     vk::Format get_format() const;
 
     vk::Image get_handle() const;
-
     const Device* get_device() const;
-
     vk::ImageUsageFlags get_usage() const;
-
     ImageDimensions get_dimensions() const;
 
     static boost::leaf::result<UniqueUnsafeImage> build(
@@ -93,6 +96,8 @@ using UniqueUnsafeImageView = std::unique_ptr<UnsafeImageView>;
 
 class UnsafeImageView {
 public:
+    vk::ImageView get_handle() const;
+
     static boost::leaf::result<UniqueUnsafeImageView> build(
         const UnsafeImage* image,
         vk::ImageViewType type,
@@ -108,7 +113,7 @@ private:
     vk::UniqueImageView handle_ = {};
     const Device* device_ = nullptr;
     vk::ImageUsageFlags usage_;
-    bool identity_swizzle_;
+    bool identity_swizzle_ = true;
     vk::Format format_;
 };
 
@@ -124,6 +129,8 @@ public:
         std::size_t num_mipmap_levels
     );
 
+    std::size_t get_first_layer() const;
+
 private:
     const UnsafeImage* image_;
     std::size_t first_layer_;
@@ -136,19 +143,38 @@ class Image {
 public:
     virtual const InnerImage& get_inner_image() const = 0;
 
-    vk::Format get_format();
+    virtual vk::Format get_format() const;
+    virtual bool has_color() const;
+    virtual bool has_depth() const;
+    virtual bool has_stencil() const;
+    virtual ImageDimensions get_dimensions() const;
 
 protected:
     Image() = default;
+};
+
+class ImageView {
+public:
+    virtual const UnsafeImageView* get_inner_image_view() const = 0;
+    virtual ImageDimensions get_dimensions() const;
 };
 
 class Swapchain;
 class SwapchainImage;
 using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
 
-class SwapchainImage : Image {
+class SwapchainImage : Image, ImageView {
 public:
-    const InnerImage& get_inner_image() const override;
+    class ImageImpl: public Image {
+        const InnerImage& get_inner_image() const override;
+    };
+
+    class ImageViewImpl: public ImageView {
+        const UnsafeImageView* get_inner_image_view() const override;
+    };
+
+    const ImageImpl* get_image_impl();
+    const ImageViewImpl* get_image_view_impl();
 
     static boost::leaf::result<UniqueSwapchainImage> build(const Swapchain* swapchain, InnerImage image);
 
@@ -158,6 +184,8 @@ private:
     const Swapchain* swapchain_ = nullptr;
     InnerImage image_ = {nullptr, 0, 1, 0, 1};
     UniqueUnsafeImageView view_ = nullptr;
+    std::unique_ptr<ImageImpl> image_impl_;
+    std::unique_ptr<ImageViewImpl> image_view_impl;
 };
 
 }

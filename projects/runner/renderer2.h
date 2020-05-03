@@ -408,8 +408,9 @@ private:
             ));
         std::tie(swapchain_, swapchain_images_) = std::move(swapchain_result);
 
-        LEAF_AUTO(command_pool, device_->get_command_pool(present_queue_->get_queue_family()));
-        LEAF_AUTO_TO(command_buffers_, command_pool->allocate(image_count));
+        LEAF_AUTO(
+            sample,
+            mff::vulkan::AutoCommandBufferBuilder::build_primary(device_, present_queue_->get_queue_family()));
 
         return {};
     }
@@ -422,7 +423,6 @@ private:
     mff::vulkan::UniqueSemaphore draw_end_semaphore_ = nullptr;
     mff::vulkan::UniqueSwapchain swapchain_ = nullptr;
     std::vector<mff::vulkan::UniqueSwapchainImage> swapchain_images_ = {};
-    std::vector<vk::UniqueCommandBuffer> command_buffers_ = {};
 
     // mff::vulkan::
 

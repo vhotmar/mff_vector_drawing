@@ -193,7 +193,7 @@ boost::leaf::result<UniqueUnsafeImageView> UnsafeImageView::build(
     return result;
 }
 
-vk::Format Image::get_format() {
+vk::Format Image::get_format() const {
     return get_inner_image().get_image()->get_format();
 }
 
@@ -213,6 +213,10 @@ boost::leaf::result<UniqueSwapchainImage> SwapchainImage::build(const Swapchain*
     return result;
 }
 
+const UnsafeImageView* SwapchainImage::get_inner_image_view() const {
+    return view_.get();
+}
+
 const UnsafeImage* InnerImage::get_image() const {
     return image_;
 }
@@ -230,6 +234,55 @@ InnerImage::InnerImage(
     , first_mipmap_level_(first_mipmap_level)
     , num_mipmap_levels_(num_mipmap_levels) {
 
+}
+
+std::size_t InnerImage::get_first_layer() const {
+    return first_layer_;
+}
+
+
+std::uint32_t get_width(const ImageDimensions& id) {
+    return std::visit(
+        overloaded{
+            [&](ImageDimensions_::Dim1d it) { return it.width; },
+            [&](ImageDimensions_::Dim2d it) { return it.width; },
+            [&](ImageDimensions_::Dim3d it) { return it.width; },
+        },
+        id
+    );
+}
+
+std::uint32_t get_height(const ImageDimensions& id) {
+    return std::visit(
+        overloaded{
+            [&](ImageDimensions_::Dim1d it) { return (std::uint32_t) 1; },
+            [&](ImageDimensions_::Dim2d it) { return it.height; },
+            [&](ImageDimensions_::Dim3d it) { return it.height; },
+        },
+        id
+    );
+}
+
+std::uint32_t get_depth(const ImageDimensions& id) {
+    return std::visit(
+        overloaded{
+            [&](ImageDimensions_::Dim1d it) { return (std::uint32_t) 1; },
+            [&](ImageDimensions_::Dim2d it) { return (std::uint32_t) 1; },
+            [&](ImageDimensions_::Dim3d it) { return it.depth; },
+        },
+        id
+    );
+}
+
+std::uint32_t get_array_layers(const ImageDimensions& id) {
+    return std::visit(
+        overloaded{
+            [&](ImageDimensions_::Dim1d it) { return (std::uint32_t) 1; },
+            [&](ImageDimensions_::Dim2d it) { return (std::uint32_t) 1; },
+            [&](ImageDimensions_::Dim3d it) { return (std::uint32_t) 1; },
+        },
+        id
+    );
 }
 
 }

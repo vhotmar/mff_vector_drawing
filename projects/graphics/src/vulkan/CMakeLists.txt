@@ -10,9 +10,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 
 add_subdirectory(command_buffer)
+add_subdirectory(framebuffer)
 add_subdirectory(image)
-
-# add_subdirectory(framebuffer)
 # add_subdirectory(graphics_pipeline)
 # add_subdirectory(pipeline)
 # add_subdirectory(descriptor)

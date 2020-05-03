@@ -127,6 +127,10 @@ std::optional<const Subpass*> RenderPass::get_subpass(std::uint32_t index) const
     return subpasses_[index].get();
 }
 
+const Device* RenderPass::get_device() const {
+    return device_;
+}
+
 std::optional<std::size_t> RenderPassBuilder::get_attachment_offset(const Id& id) {
     return mff::optional::map(
         mff::find_if(attachments_, [&](const auto& attachment) { return attachment.id == id; }),

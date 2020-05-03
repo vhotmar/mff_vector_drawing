@@ -16,7 +16,11 @@ namespace mff {
 
 vk::Extent2D to_extent(Vector2ui v);
 
+vk::Extent3D to_extent(std::array<std::uint32_t, 3> arr);
+
 vk::Offset2D to_offset(Vector2ui v);
+
+vk::Offset3D to_offset(std::array<std::int32_t, 3> arr);
 
 
 template <typename T>
@@ -27,6 +31,8 @@ boost::leaf::result<T> to_result(vk::ResultValue<T> vk_result) {
 
     return std::move(vk_result.value);
 }
+
+boost::leaf::result<void> to_result(vk::Result vk_result);
 
 boost::leaf::result<void> to_result(VkResult vk_result);
 

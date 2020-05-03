@@ -5,10 +5,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include <mff/object_pool.h>
 #include <mff/leaf.h>
 #include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/command_buffer/command_pool.h>
+#include <mff/graphics/vulkan/sync.h>
 #include <mff/graphics/vulkan/vulkan.h>
 
 namespace vma {
@@ -52,7 +54,10 @@ using SharedQueue = std::shared_ptr<Queue>;
 using UniqueDevice = std::unique_ptr<Device>;
 
 class CommandPool;
+class Semaphore;
 using UniqueCommandPool = std::unique_ptr<CommandPool>;
+using UniqueSemaphore = std::unique_ptr<Semaphore>;
+using UniquePooledSemaphore = ObjectPool<Semaphore>::pool_ptr;
 
 /**
  * Represents Vulkan context specific for instance and physical device.
@@ -84,12 +89,14 @@ public:
 
     const vma::Allocator* get_allocator() const;
 
+    mff::ObjectPool<mff::vulkan::Semaphore>* get_semaphore_pool() const;
+
     /**
      * Get command pool for this device and specified queue family (non-const because can allocate)
      * @param queue_family
      * @return
      */
-    boost::leaf::result<const CommandPool*> get_command_pool(const QueueFamily* queue_family);
+    boost::leaf::result<CommandPool*> get_command_pool(const QueueFamily* queue_family);
 
     /**
      * Builds new vulkan Device for specified PhysicalDevice.
@@ -116,6 +123,7 @@ private:
     std::vector<std::string> extensions_ = {};
     std::unordered_map<std::uint32_t, UniqueCommandPool> command_pools_ = {};
     vma::UniqueAllocator allocator_ = nullptr;
+    mff::UniqueObjectPool<mff::vulkan::Semaphore> semaphores_pool_ = nullptr;
 };
 
 }

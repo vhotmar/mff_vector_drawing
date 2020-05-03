@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <range/v3/all.hpp>
 #include <mff/algorithms.h>
 #include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/dispatcher.h>
@@ -15,40 +16,42 @@ boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::
     const std::vector<std::string>& extensions
 ) {
     auto instance = physical_device->get_instance();
+
+    // we need to forward the layers from instance (legacy reasons vulkan docs say)
     auto layers = instance->get_loaded_layers();
     auto layers_c = utils::to_pointer_char_data(layers);
 
-    // TODO: check whether the extension is supported
+    // TODO (vhotmar): better error handling - check whether the extension is supported
     auto extensions_c = utils::to_pointer_char_data(extensions);
 
     std::vector<const QueueFamily*> uniq_families;
-    std::vector<std::size_t> original_to_uniq;
-    original_to_uniq.reserve(queue_families.size());
+    std::vector<std::size_t> original_index_to_uniq_index;
+    original_index_to_uniq_index.reserve(queue_families.size());
 
     for (auto& queue_family: queue_families) {
-        // TODO: check whether the queue family is from correct physical device
+        // TODO (vhotmar): better error handling - check whether the queue family is from correct physical device
         auto it = mff::find(uniq_families, queue_family);
 
         if (!it) {
             uniq_families.push_back(queue_family);
-            original_to_uniq.emplace_back(uniq_families.size() - 1);
+            original_index_to_uniq_index.emplace_back(uniq_families.size() - 1);
         } else {
-            original_to_uniq.emplace_back(std::distance(uniq_families.cbegin(), *it));
+            original_index_to_uniq_index.emplace_back(std::distance(uniq_families.cbegin(), *it));
         }
     }
 
     std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-    std::vector<std::vector<float>> priorities_owner;
-    priorities_owner.reserve(uniq_families.size());
+    std::vector<std::vector<float>> queue_priorities;
+    queue_priorities.reserve(uniq_families.size());
 
     for (const auto& queue_family: uniq_families) {
-        priorities_owner.emplace_back(std::vector<float>(queue_family->get_queues_count(), 1.0f));
+        queue_priorities.emplace_back(std::vector<float>(queue_family->get_queues_count(), 1.0f));
         queue_create_infos.push_back(
             vk::DeviceQueueCreateInfo(
                 {},
                 queue_family->get_index(),
-                priorities_owner.back().size(),
-                priorities_owner.back().data()));
+                queue_priorities.back().size(),
+                queue_priorities.back().data()));
     }
 
     auto device_create_info = vk::DeviceCreateInfo(
@@ -72,36 +75,42 @@ boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::
 
     init_dispatcher(device->handle_.get());
 
-    std::vector<std::shared_ptr<Queue>> uniq_queues = mff::map(
-        [&](auto queue_family) {
-            auto count = queue_family->get_queues_count();
-            std::vector<vk::Queue> queues;
-            queues.reserve(count);
+    std::vector<std::shared_ptr<Queue>> uniq_queues = uniq_families
+        | ranges::views::transform(
+            [&](const auto& queue_family) {
+                auto count = queue_family->get_queues_count();
+                std::vector<vk::Queue> queues;
+                queues.reserve(count);
 
-            for (std::size_t i = 0; i < count; i++) {
-                queues.push_back(device->handle_->getQueue(queue_family->get_index(), i));
+                for (std::size_t i = 0; i < count; i++) {
+                    queues.push_back(device->handle_->getQueue(queue_family->get_index(), i));
+                }
+
+                struct enable_Queue : public Queue {};
+                std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>();
+
+                queue->queue_family_ = queue_family;
+                queue->device_ = device.get();
+                queue->queues_ = std::move(queues);
+
+                return std::move(queue);
             }
-
-            struct enable_Queue: public Queue {};
-            std::shared_ptr<Queue> queue = std::make_shared<enable_Queue>();
-
-            queue->queue_family_ = queue_family;
-            queue->device_ = device.get();
-            queue->queues_ = std::move(queues);
-
-            return std::move(queue);
-        },
-        uniq_families
-    );
+        )
+        | ranges::to<std::vector>();
 
     std::vector<std::shared_ptr<Queue>> output_queues;
-    output_queues.reserve(original_to_uniq.size());
+    output_queues.reserve(original_index_to_uniq_index.size());
 
-    for (auto index: original_to_uniq) {
+    for (auto index: original_index_to_uniq_index) {
         output_queues.push_back(uniq_queues[index]);
     }
 
     LEAF_AUTO_TO(device->allocator_, vma::Allocator::build(device.get()));
+    device->semaphores_pool_ = std::make_unique<ObjectPool<mff::vulkan::Semaphore>>(
+        [&]() {
+            return mff::vulkan::Semaphore::build(device.get());
+        }
+    );
 
     return std::make_tuple(std::move(device), std::move(output_queues));
 }
@@ -122,7 +131,7 @@ vk::Device Device::get_handle() const {
     return handle_.get();
 }
 
-boost::leaf::result<const CommandPool*> Device::get_command_pool(const QueueFamily* queue_family) {
+boost::leaf::result<CommandPool*> Device::get_command_pool(const QueueFamily* queue_family) {
     auto id = queue_family->get_index();
 
     if (!mff::has(command_pools_, id)) {
@@ -136,6 +145,10 @@ boost::leaf::result<const CommandPool*> Device::get_command_pool(const QueueFami
 
 const vma::Allocator* Device::get_allocator() const {
     return allocator_.get();
+}
+
+mff::ObjectPool<mff::vulkan::Semaphore>* Device::get_semaphore_pool() const {
+    return semaphores_pool_.get();
 }
 
 const vk::Queue& Queue::get_handle() const {

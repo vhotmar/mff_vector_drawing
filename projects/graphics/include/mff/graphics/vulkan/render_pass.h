@@ -55,6 +55,10 @@ private:
     std::vector<std::unique_ptr<Subpass>> subpasses_;
 
 public:
+    const Device* get_device() const;
+    vk::RenderPass get_handle() const;
+    std::optional<const Subpass*> get_subpass(std::uint32_t index) const;
+
     /**
      * Builds new render pass
      * @param attachments
@@ -69,10 +73,6 @@ public:
         const std::vector<SubpassDescription>& subpasses,
         const std::vector<SubpassDependency>& dependencies
     );
-
-    vk::RenderPass get_handle() const;
-
-    std::optional<const Subpass*> get_subpass(std::uint32_t index) const;
 };
 
 /**
