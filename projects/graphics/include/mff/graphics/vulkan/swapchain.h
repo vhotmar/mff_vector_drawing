@@ -9,14 +9,13 @@
 #include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/image/image.h>
-#include <mff/graphics/vulkan/sync.h>
+#include <mff/graphics/vulkan/sync/sync.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window/window.h>
 
-#include "./sync.h"
-
 namespace mff::vulkan {
 
+class Device;
 class Swapchain;
 class SwapchainImage;
 class UnsafeImage;

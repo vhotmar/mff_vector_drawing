@@ -10,7 +10,8 @@
 #include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/command_buffer/command_pool.h>
-#include <mff/graphics/vulkan/sync.h>
+#include <mff/graphics/vulkan/sync/sync.h>
+#include <mff/graphics/vulkan/sync/semaphore.h>
 #include <mff/graphics/vulkan/vulkan.h>
 
 namespace vma {

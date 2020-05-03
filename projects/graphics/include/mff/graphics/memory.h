@@ -2,7 +2,6 @@
 
 #include "vk_mem_alloc.h"
 
-#include <mff/graphics/memory.h>
 #include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/vulkan/vulkan.h>
@@ -38,7 +37,7 @@ public:
 private:
     Buffer() = default;
 
-    const Allocator* allocator_;
+    const Allocator* allocator_ = nullptr;
     vk::Buffer buffer_;
     vk::BufferCreateInfo info_;
     VmaAllocation allocation_;
@@ -62,7 +61,7 @@ public:
 private:
     Image() = default;
 
-    const Allocator* allocator_;
+    const Allocator* allocator_ = nullptr;
     vk::Image image_;
     vk::ImageCreateInfo info_;
     VmaAllocation allocation_;

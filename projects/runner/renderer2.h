@@ -408,10 +408,10 @@ private:
             ));
         std::tie(swapchain_, swapchain_images_) = std::move(swapchain_result);
 
-        LEAF_AUTO(
+/*        LEAF_AUTO(
             sample,
             mff::vulkan::AutoCommandBufferBuilder::build_primary(device_, present_queue_->get_queue_family()));
-
+*/
         return {};
     }
 

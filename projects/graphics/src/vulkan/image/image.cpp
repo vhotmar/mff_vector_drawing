@@ -221,6 +221,10 @@ bool Image::has_stencil() const {
     return is_stencil(format) || is_depthstencil(format);
 }
 
+ImageDimensions Image::get_dimensions() const {
+    return get_inner_image().get_image()->get_dimensions();
+}
+
 boost::leaf::result<UniqueSwapchainImage> SwapchainImage::build(const Swapchain* swapchain, InnerImage image) {
     struct enable_SwapchainImage : public SwapchainImage {};
     UniqueSwapchainImage result = std::make_unique<enable_SwapchainImage>();

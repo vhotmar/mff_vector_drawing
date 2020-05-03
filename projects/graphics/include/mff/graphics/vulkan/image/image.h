@@ -4,10 +4,17 @@
 
 #include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/device.h>
-#include <mff/graphics/vulkan/sync.h>
+#include <mff/graphics/vulkan/sync/sync.h>
 #include <mff/graphics/vulkan/swapchain.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/utils.h>
+
+namespace vma {
+
+class Image;
+using UniqueImage = std::unique_ptr<Image>;
+
+}
 
 namespace mff::vulkan {
 
@@ -164,7 +171,7 @@ class Swapchain;
 class SwapchainImage;
 using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
 
-class SwapchainImage : Image, ImageView {
+class SwapchainImage {
 public:
     class ImageImpl: public Image {
         const InnerImage& get_inner_image() const override;
