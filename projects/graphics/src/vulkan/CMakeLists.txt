@@ -2,6 +2,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     debug.cpp
     device.cpp
     dispatcher.cpp
+    format.cpp
     instance.cpp
     render_pass.cpp
     swapchain.cpp

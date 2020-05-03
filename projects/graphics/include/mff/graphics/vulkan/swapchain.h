@@ -6,15 +6,23 @@
 
 #include <mff/leaf.h>
 #include <mff/graphics/math.h>
-#include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/device.h>
+#include <mff/graphics/vulkan/instance.h>
+#include <mff/graphics/vulkan/image/image.h>
+#include <mff/graphics/vulkan/sync.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window/window.h>
-#include <mff/graphics/vulkan/image/image.h>
 
 #include "./sync.h"
 
 namespace mff::vulkan {
+
+class Swapchain;
+class SwapchainImage;
+class UnsafeImage;
+using UniqueSwapchain = std::unique_ptr<Swapchain>;
+using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
+using UniqueUnsafeImage = std::unique_ptr<UnsafeImage>;
 
 /**
  * The surface capabilities regarding PhysicalDevice, Window and platform
@@ -224,13 +232,6 @@ enum class create_swapchain_error_code {
      */
     unsupported_present_mode
 };
-
-class Swapchain;
-class SwapchainImage;
-class UnsafeImage;
-using UniqueSwapchain = std::unique_ptr<Swapchain>;
-using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
-using UniqueUnsafeImage = std::unique_ptr<UnsafeImage>;
 
 /**
  * Contains the swapping system of images (WSI specific that are going to be presented to surface.

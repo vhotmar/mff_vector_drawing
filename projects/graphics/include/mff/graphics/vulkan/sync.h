@@ -11,6 +11,11 @@
 
 namespace mff::vulkan {
 
+class Device;
+class Semaphore;
+using UniqueSemaphore = std::unique_ptr<Semaphore>;
+using UniquePooledSemaphore = ObjectPool<Semaphore>::pool_ptr;
+
 namespace SharingMode_ {
 
 /**
@@ -35,10 +40,6 @@ struct Concurrent {
 using SharingMode = std::variant<SharingMode_::Exclusive, SharingMode_::Concurrent>;
 
 SharingMode get_sharing_mode(const std::vector<const QueueFamily*>& queue_families = {});
-
-class Semaphore;
-using UniqueSemaphore = std::unique_ptr<Semaphore>;
-using UniquePooledSemaphore = ObjectPool<Semaphore>::pool_ptr;
 
 class Semaphore {
 public:

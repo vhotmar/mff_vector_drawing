@@ -2,6 +2,7 @@
 
 #include <mff/graphics/utils.h>
 #include <mff/utils.h>
+#include <mff/graphics/vulkan/format.h>
 
 namespace mff::vulkan {
 
@@ -151,6 +152,10 @@ ImageDimensions UnsafeImage::get_dimensions() const {
     return dimensions_;
 }
 
+vk::ImageView UnsafeImageView::get_handle() const {
+    return handle_.get();
+}
+
 boost::leaf::result<UniqueUnsafeImageView> UnsafeImageView::build(
     const UnsafeImage* image,
     vk::ImageViewType type,
@@ -197,8 +202,23 @@ vk::Format Image::get_format() const {
     return get_inner_image().get_image()->get_format();
 }
 
-const InnerImage& SwapchainImage::get_inner_image() const {
-    return image_;
+bool Image::has_color() const {
+    auto format = get_format();
+
+    return is_float(format) || is_uint(format) || is_sint(format);
+}
+
+bool Image::has_depth() const {
+    auto format = get_format();
+
+    return is_depth(format) || is_depthstencil(format);
+}
+
+
+bool Image::has_stencil() const {
+    auto format = get_format();
+
+    return is_stencil(format) || is_depthstencil(format);
 }
 
 boost::leaf::result<UniqueSwapchainImage> SwapchainImage::build(const Swapchain* swapchain, InnerImage image) {
@@ -211,10 +231,6 @@ boost::leaf::result<UniqueSwapchainImage> SwapchainImage::build(const Swapchain*
     LEAF_AUTO_TO(result->view_, UnsafeImageView::build(image.get_image(), vk::ImageViewType::e2D, 0, 1, 0, 1));
 
     return result;
-}
-
-const UnsafeImageView* SwapchainImage::get_inner_image_view() const {
-    return view_.get();
 }
 
 const UnsafeImage* InnerImage::get_image() const {

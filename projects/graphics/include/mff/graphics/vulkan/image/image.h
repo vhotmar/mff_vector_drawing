@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/vulkan/sync.h>
 #include <mff/graphics/vulkan/swapchain.h>
