@@ -19,8 +19,10 @@ boost::leaf::result<void> run() {
         .with_title("My app")
         .build(&event_loop));
 
-    LEAF_AUTO(engine, VulkanEngine::build(window));
+    LEAF_AUTO(engine, VulkanBaseEngine::build(window));
     LEAF_AUTO(presenter, Presenter::build(engine.get()));
+    LEAF_AUTO(renderer, RendererContext::build(engine.get(), presenter.get()));
+    LEAF_AUTO(renderer_surface, RendererSurface::build(renderer.get(), { 800, 600 }));
 
     // Renderer renderer(window);
 

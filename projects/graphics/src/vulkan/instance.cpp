@@ -88,9 +88,13 @@ boost::leaf::result<UniqueInstance> Instance::build(
     };
 
     if (constants::kVULKAN_DEBUG) {
-        bool has_debug_layer = false;
+        bool has_debug_layer = true;
 
-        has_debug_layer = has_debug_layer || add_layer("VK_LAYER_LUNARG_standard_validation");
+        has_debug_layer = has_debug_layer && add_layer("VK_LAYER_GOOGLE_threading");
+        has_debug_layer = has_debug_layer && add_layer("VK_LAYER_LUNARG_parameter_validation");
+        has_debug_layer = has_debug_layer && add_layer("VK_LAYER_LUNARG_object_tracker");
+        has_debug_layer = has_debug_layer && add_layer("VK_LAYER_LUNARG_core_validation");
+        has_debug_layer = has_debug_layer && add_layer("VK_LAYER_GOOGLE_unique_objects");
 
         if (!has_debug_layer) {
             // we are in debug but debug layer not found

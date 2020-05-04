@@ -10,7 +10,9 @@
 
 namespace mff::vulkan {
 
+class UnsafeCommandBuffer;
 class UnsafeCommandBufferBuilder;
+using UniqueUnsafeCommandBuffer = std::unique_ptr<UnsafeCommandBuffer>;
 using UniqueUnsafeCommandBufferBuilder = std::unique_ptr<UnsafeCommandBufferBuilder>;
 
 struct UnsafeCommandBufferBuilderPipelineBarrier {
@@ -18,7 +20,29 @@ struct UnsafeCommandBufferBuilderPipelineBarrier {
     vk::PipelineStageFlags dst_stage_mask = {};
     vk::DependencyFlags dependency_flags = vk::DependencyFlagBits::eByRegion;
 
+    std::vector<vk::MemoryBarrier> memory_barriers = {};
+    std::vector<vk::BufferMemoryBarrier> buffer_barriers = {};
     std::vector<vk::ImageMemoryBarrier> image_barriers = {};
+
+    bool is_empty() const;
+    UnsafeCommandBufferBuilderPipelineBarrier merge(const UnsafeCommandBufferBuilderPipelineBarrier& other) const;
+    UnsafeCommandBufferBuilderPipelineBarrier& add_execution_dependency(vk::PipelineStageFlags source, vk::PipelineStageFlags destination, bool by_region);
+
+    UnsafeCommandBufferBuilderPipelineBarrier& add_image_memory_barrier(
+        const Image* image,
+        std::uint32_t mipmaps_from,
+        std::uint32_t mipmaps_to,
+        std::uint32_t layers_from,
+        std::uint32_t layers_to,
+        vk::PipelineStageFlags source_stage,
+        vk::AccessFlags source_access,
+        vk::PipelineStageFlags destination_stage,
+        vk::AccessFlags destination_access,
+        bool by_region,
+        std::optional<std::tuple<std::uint32_t, std::uint32_t>> queue_transfer,
+        vk::ImageLayout current_layout,
+        vk::ImageLayout new_layout
+    );
 };
 
 struct UnsafeCommandBufferBuilderImageAspect {
@@ -41,6 +65,19 @@ struct UnsafeCommandBufferBuilderImageCopy {
     std::array<std::uint32_t, 3> extent;
 };
 
+class UnsafeCommandBuffer {
+    friend class UnsafeCommandBufferBuilder;
+
+public:
+    const Device* get_device() const;
+
+private:
+    UnsafeCommandBuffer() = default;
+
+    vk::CommandBuffer command_buffer_;
+    UniqueCommandPoolAllocation allocation_;
+};
+
 /**
  * Just add some nice wrappers around CommandBuffer build stage
  */
@@ -52,13 +89,23 @@ public:
         vk::CommandBufferUsageFlags usage = {}
     );
 
-    boost::leaf::result<void> copy_image(
+    // TODO: should not be here (only in Auto)
+    static boost::leaf::result<UniqueUnsafeCommandBufferBuilder> build_primary(
+        Device* device,
+        const QueueFamily* family
+    );
+
+    void pipeline_barrier(UnsafeCommandBufferBuilderPipelineBarrier command);
+
+    void copy_image(
         const Image* source,
         vk::ImageLayout source_layout,
         const Image* destination,
         vk::ImageLayout destination_layout,
         const std::vector<UnsafeCommandBufferBuilderImageCopy>& regions
     );
+
+    boost::leaf::result<UniqueUnsafeCommandBuffer> build();
 
     const Device* get_device() const;
 

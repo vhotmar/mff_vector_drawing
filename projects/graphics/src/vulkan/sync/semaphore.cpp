@@ -10,9 +10,12 @@ boost::leaf::result<UniqueSemaphore> Semaphore::build(const Device* device) {
     UniqueSemaphore result = std::make_unique<enable_Sempahore>();
 
     result->device_ = device;
+
+    vk::SemaphoreCreateInfo info = {};
+
     LEAF_AUTO_TO(
         result->handle_,
-        to_result(device->get_handle().createSemaphoreUnique(vk::SemaphoreCreateInfo())));
+        to_result(device->get_handle().createSemaphoreUnique(info)));
 
     return result;
 }

@@ -1,7 +1,7 @@
 #include <mff/graphics/vulkan/descriptor/pipeline_layout.h>
 
+#include <range/v3/all.hpp>
 #include <mff/algorithms.h>
-
 #include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
@@ -18,12 +18,21 @@ boost::leaf::result<std::unique_ptr<PipelineLayout>> PipelineLayout::build(
         layouts.push_back(std::move(item));
     }
 
-    std::vector<vk::DescriptorSetLayout> layout_handles = mff::map(
-        [](const auto& info) { return info->get_handle(); },
-        layouts
-    );
+    auto layout_handles = layouts
+        | ranges::views::transform(
+            [](const auto& info) {
+                return info->get_handle();
+            }
+        )
+        | ranges::to<std::vector>();
 
-    auto info = vk::PipelineLayoutCreateInfo({}, layout_handles.size(), layout_handles.data(), 0, nullptr);
+    auto info = vk::PipelineLayoutCreateInfo(
+        {},
+        layout_handles.size(),
+        layout_handles.data(),
+        0,
+        nullptr
+    );
 
     struct enable_PipelineLayout : public PipelineLayout {};
     std::unique_ptr<PipelineLayout> result = std::make_unique<enable_PipelineLayout>();

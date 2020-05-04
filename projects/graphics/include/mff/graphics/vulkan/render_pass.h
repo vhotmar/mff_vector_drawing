@@ -14,6 +14,7 @@
 namespace mff::vulkan {
 
 class RenderPass;
+using UniqueRenderPass = std::unique_ptr<RenderPass>;
 
 /**
  * Class identifying concrete subpass within RenderPass.
@@ -67,7 +68,7 @@ public:
      * @param device
      * @return RenderPass build from the parameters
      */
-    static boost::leaf::result<std::unique_ptr<RenderPass>> build(
+    static boost::leaf::result<UniqueRenderPass> build(
         const Device* device,
         const std::vector<AttachmentDescription>& attachments,
         const std::vector<SubpassDescription>& subpasses,
@@ -90,6 +91,8 @@ private:
         vk::SampleCountFlagBits samples;
         std::optional<vk::ImageLayout> initial_layout = std::nullopt;
         std::optional<vk::ImageLayout> final_layout = std::nullopt;
+        std::optional<vk::AttachmentLoadOp> stencil_load = std::nullopt;
+        std::optional<vk::AttachmentStoreOp> stencil_store = std::nullopt;
     };
 
     struct PartialSubpassInfo {
@@ -124,7 +127,9 @@ public:
         vk::Format format,
         vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1,
         std::optional<vk::ImageLayout> initial_layout = std::nullopt,
-        std::optional<vk::ImageLayout> final_layout = std::nullopt
+        std::optional<vk::ImageLayout> final_layout = std::nullopt,
+        std::optional<vk::AttachmentLoadOp> stencil_load = std::nullopt,
+        std::optional<vk::AttachmentStoreOp> stencil_store = std::nullopt
     );
 
     /**

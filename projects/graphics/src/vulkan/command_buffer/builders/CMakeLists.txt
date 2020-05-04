@@ -1,5 +1,5 @@
 target_sources(${PROJECT_NAME} PRIVATE
-    auto.cpp
-    sync.cpp
+    # auto.cpp
+    # sync.cpp
     unsafe.cpp
 )

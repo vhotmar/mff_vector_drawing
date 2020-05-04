@@ -152,6 +152,10 @@ ImageDimensions UnsafeImage::get_dimensions() const {
     return dimensions_;
 }
 
+std::uintptr_t UnsafeImage::get_key() const {
+    return reinterpret_cast<std::uintptr_t>((VkImage) handle_);
+}
+
 vk::ImageView UnsafeImageView::get_handle() const {
     return handle_.get();
 }
@@ -167,6 +171,17 @@ boost::leaf::result<UniqueUnsafeImageView> UnsafeImageView::build(
     struct enable_UnsafeImageView : public UnsafeImageView {};
     UniqueUnsafeImageView result = std::make_unique<enable_UnsafeImageView>();
 
+    auto aspect_mask = ([&]() {
+        auto format = image->get_format();
+        vk::ImageAspectFlags result = {};
+
+        if (is_float(format) || is_uint(format) || is_sint(format)) result |= vk::ImageAspectFlagBits::eColor;
+        if (is_depth(format) || is_depthstencil(format)) result |= vk::ImageAspectFlagBits::eDepth;
+        if (is_stencil(format) || is_depthstencil(format)) result |= vk::ImageAspectFlagBits::eStencil;
+
+        return result;
+    })();
+
     vk::ImageViewCreateInfo info(
         {},
         image->get_handle(),
@@ -179,7 +194,7 @@ boost::leaf::result<UniqueUnsafeImageView> UnsafeImageView::build(
             vk::ComponentSwizzle::eA
         ),
         vk::ImageSubresourceRange(
-            vk::ImageAspectFlagBits::eColor,
+            aspect_mask,
             mipmap_from,
             mipmap_to - mipmap_from,
             array_layer_from,
@@ -304,5 +319,78 @@ std::uint32_t get_array_layers(const ImageDimensions& id) {
         id
     );
 }
+
+const InnerImage& AttachmentImage::ImageImpl::get_inner_image() const {
+    return image_->inner_image_;
+}
+
+AttachmentImage::ImageImpl::ImageImpl(const AttachmentImage* image)
+    : image_(image) {
+}
+
+const UnsafeImageView* AttachmentImage::ImageViewImpl::get_inner_image_view() const {
+    return image_->view_.get();
+}
+
+ImageDimensions AttachmentImage::ImageViewImpl::get_dimensions() const {
+    return image_->image_->get_dimensions();
+}
+
+AttachmentImage::ImageViewImpl::ImageViewImpl(const AttachmentImage* image)
+    : image_(image) {
+}
+
+boost::leaf::result<UniqueAttachmentImage> AttachmentImage::build(
+    const Device* device,
+    std::array<std::uint32_t, 2> dimensions,
+    vk::Format format
+) {
+    return AttachmentImage::build(device, dimensions, format, vk::ImageUsageFlags{}, vk::SampleCountFlagBits::e1);
+}
+
+boost::leaf::result<UniqueAttachmentImage> AttachmentImage::build(
+    const Device* device,
+    std::array<std::uint32_t, 2> dimensions,
+    vk::Format format,
+    vk::ImageUsageFlags usage,
+    vk::SampleCountFlagBits samples
+) {
+    struct enable_AttachmentImage : public AttachmentImage {};
+    UniqueAttachmentImage result = std::make_unique<enable_AttachmentImage>();
+
+    bool depth = (is_depth(format) || is_depthstencil(format) || is_stencil(format));
+
+    if (depth) {
+        usage = (usage | vk::ImageUsageFlagBits::eDepthStencilAttachment) & (~vk::ImageUsageFlagBits::eColorAttachment);
+    } else {
+        usage = (usage | vk::ImageUsageFlagBits::eColorAttachment) & (~vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    }
+
+    LEAF_AUTO_TO(
+        result->image_,
+        UnsafeImage::build(
+            device,
+            usage,
+            format,
+            ImageDimensions_::Dim2d{dimensions[0], dimensions[1], 1, false},
+            samples,
+            1,
+            SharingMode_::Exclusive{},
+            false
+        ));
+
+    LEAF_AUTO_TO(result->view_, UnsafeImageView::build(result->image_.get(), vk::ImageViewType::e2D, 0, 1, 0, 1));
+
+    result->inner_image_ = InnerImage(result->image_.get(), 0, 1, 0, 1);
+    result->format_ = format;
+
+    result->image_impl_ = std::make_unique<ImageImpl>(result.get());
+    result->image_view_impl_ = std::make_unique<ImageViewImpl>(result.get());
+
+    return result;
+}
+
+const Image* AttachmentImage::get_image_impl() const { return image_impl_.get(); }
+const ImageView* AttachmentImage::get_image_view_impl() const { return image_view_impl_.get(); }
 
 }

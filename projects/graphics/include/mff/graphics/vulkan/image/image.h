@@ -59,6 +59,7 @@ public:
     const Device* get_device() const;
     vk::ImageUsageFlags get_usage() const;
     ImageDimensions get_dimensions() const;
+    std::uintptr_t get_key() const;
 
     static boost::leaf::result<UniqueUnsafeImage> build(
         const Device* device,
@@ -105,6 +106,7 @@ using UniqueUnsafeImageView = std::unique_ptr<UnsafeImageView>;
 class UnsafeImageView {
 public:
     vk::ImageView get_handle() const;
+
 
     static boost::leaf::result<UniqueUnsafeImageView> build(
         const UnsafeImage* image,
@@ -164,7 +166,7 @@ protected:
 class ImageView {
 public:
     virtual const UnsafeImageView* get_inner_image_view() const = 0;
-    virtual ImageDimensions get_dimensions() const;
+    virtual ImageDimensions get_dimensions() const = 0;
 };
 
 class Swapchain;
@@ -173,12 +175,15 @@ using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
 
 class SwapchainImage {
 public:
-    class ImageImpl: public Image {
+    class ImageImpl : public Image {
+    public:
         const InnerImage& get_inner_image() const override;
     };
 
-    class ImageViewImpl: public ImageView {
+    class ImageViewImpl : public ImageView {
+    public:
         const UnsafeImageView* get_inner_image_view() const override;
+        ImageDimensions get_dimensions() const override;
     };
 
     const ImageImpl* get_image_impl();
@@ -194,6 +199,62 @@ private:
     UniqueUnsafeImageView view_ = nullptr;
     std::unique_ptr<ImageImpl> image_impl_;
     std::unique_ptr<ImageViewImpl> image_view_impl;
+};
+
+class AttachmentImage;
+using UniqueAttachmentImage = std::unique_ptr<AttachmentImage>;
+
+class AttachmentImage {
+private:
+    class ImageImpl : public Image {
+    public:
+        ImageImpl(const AttachmentImage* image);
+
+        const InnerImage& get_inner_image() const override;
+
+    private:
+        const AttachmentImage* image_;
+    };
+
+    class ImageViewImpl : public ImageView {
+    public:
+        ImageViewImpl(const AttachmentImage* image);
+
+        const UnsafeImageView* get_inner_image_view() const override;
+        ImageDimensions get_dimensions() const override;
+
+    private:
+        const AttachmentImage* image_;
+    };
+
+public:
+    const Image* get_image_impl() const;
+    const ImageView* get_image_view_impl() const;
+
+    static boost::leaf::result<UniqueAttachmentImage> build(
+        const Device* device,
+        std::array<std::uint32_t, 2> dimensions,
+        vk::Format format
+    );
+
+    static boost::leaf::result<UniqueAttachmentImage> build(
+        const Device* device,
+        std::array<std::uint32_t, 2> dimensions,
+        vk::Format format,
+        vk::ImageUsageFlags usage,
+        vk::SampleCountFlagBits samples
+    );
+
+private:
+    AttachmentImage() = default;
+
+    vk::Format format_;
+    InnerImage inner_image_ = {nullptr, 0, 1, 0, 1};
+    UniqueUnsafeImage image_ = nullptr;
+    UniqueUnsafeImageView view_ = nullptr;
+    std::unique_ptr<ImageImpl> image_impl_;
+    std::unique_ptr<ImageViewImpl> image_view_impl_;
+
 };
 
 }

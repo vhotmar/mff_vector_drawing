@@ -6,7 +6,7 @@
 #define VULKAN_HPP_NO_EXCEPTIONS
 // and we want to ignore the asserts (probably horrible thing, but otherwise
 // we can't really control flow of the program)
-#define VULKAN_HPP_ASSERT ignore
+// #define VULKAN_HPP_ASSERT vk::ignore
 
 // otherwise vulkan.hpp fails
 #include <cassert>

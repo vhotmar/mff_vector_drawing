@@ -73,14 +73,14 @@ boost::leaf::result<void> SyncCommandBufferBuilder::copy_image(
                     return "vkCmdCopyImage";
                 }
 
-                const Image* image(std::size_t num) override {
+                const Image* image(std::size_t num) const override {
                     if (num == 0) return source_;
                     if (num == 1) return destination_;
 
                     assert(false);
                 }
 
-                std::string image_name(std::size_t num) override {
+                std::string image_name(std::size_t num) const override {
                     if (num == 0) return "source";
                     if (num == 1) return "destination";
 
@@ -95,14 +95,14 @@ boost::leaf::result<void> SyncCommandBufferBuilder::copy_image(
             return std::make_unique<_FinalCommand>(source_.value(), destination_.value());
         }
 
-        const Image* image(std::size_t num) override {
+        const Image* image(std::size_t num) const override {
             if (num == 0) return source_.value();
             if (num == 1) return destination_.value();
 
             assert(false);
         }
 
-        std::string image_name(std::size_t num) override {
+        std::string image_name(std::size_t num) const override {
             if (num == 0) return "source";
             if (num == 1) return "destination";
 

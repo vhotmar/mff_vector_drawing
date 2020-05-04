@@ -15,10 +15,12 @@ using UniqueSyncCommandBufferBuilder = std::unique_ptr<SyncCommandBufferBuilder>
 class FinalCommand {
 public:
     virtual std::string get_name() const = 0;
-    virtual const Image* image(std::size_t num) {
+
+    virtual const Image* image(std::size_t num) const {
         assert(false);
     };
-    virtual std::string image_name(std::size_t num) {
+
+    virtual std::string image_name(std::size_t num) const {
         assert(false);
     };
 };
@@ -28,10 +30,12 @@ public:
     virtual std::string get_name() const = 0;
     virtual void send(UnsafeCommandBufferBuilder* builder) = 0;
     virtual std::unique_ptr<FinalCommand> to_final_command() = 0;
-    virtual const Image* image(std::size_t num) {
+
+    virtual const Image* image(std::size_t num) const {
         assert(false);
     };
-    virtual std::string image_name(std::size_t num) {
+
+    virtual std::string image_name(std::size_t num) const {
         assert(false);
     };
 };
@@ -41,11 +45,26 @@ enum class ResourceType {
     Image
 };
 
+struct ResourceKey {
+    std::size_t key;
+
+};
+
 /**
  * Sync resources
  */
 class SyncCommandBufferBuilder : public CommandBufferBuilder<SyncCommandBufferBuilder> {
 public:
+    /*boost::leaf::result<void> assign_command_resources(
+        ResourceType ty,
+        std::size_t index,
+        bool exclusive,
+        vk::PipelineStageFlags stages,
+        vk::AccessFlags access,
+        vk::Imagelayout start_layout,
+        vk::ImageLayout end_layout
+    );*/
+
     boost::leaf::result<void> copy_image(
         const Image* source,
         vk::ImageLayout source_layout,

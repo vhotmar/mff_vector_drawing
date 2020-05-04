@@ -17,6 +17,8 @@
 #include <mff/graphics/vulkan/swapchain.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window.h>
+#include <mff/graphics/vulkan/command_buffer/builders/unsafe.h>
+#include <mff/graphics/vulkan/framebuffer/framebuffer.h>
 
 #include "./utils/logger.h"
 
@@ -264,15 +266,15 @@ boost::leaf::result<vk::UniqueRenderPass> create_render_pass(
 }
 
 /**
- * This class provides us with resources which do not change really
+ * This class provides us with resources which do not change really (and this can be reused...)
  */
-class VulkanEngine {
+class VulkanBaseEngine {
 public:
-    static boost::leaf::result<std::unique_ptr<VulkanEngine>> build(
+    static boost::leaf::result<std::unique_ptr<VulkanBaseEngine>> build(
         const std::shared_ptr<mff::window::Window>& window
     ) {
-        struct enable_VulkanEngine : public VulkanEngine {};
-        std::unique_ptr<VulkanEngine> engine = std::make_unique<enable_VulkanEngine>();
+        struct enable_VulkanEngine : public VulkanBaseEngine {};
+        std::unique_ptr<VulkanBaseEngine> engine = std::make_unique<enable_VulkanEngine>();
 
         engine->window_ = window;
 
@@ -332,7 +334,7 @@ public:
     }
 
 private:
-    VulkanEngine() = default;
+    VulkanBaseEngine() = default;
 
     /**
      * Window on which we will initialize the vulkan context + draw (no multi window for now)
@@ -351,7 +353,7 @@ private:
 
 class Presenter {
 public:
-    static boost::leaf::result<std::unique_ptr<Presenter>> build(VulkanEngine* engine) {
+    static boost::leaf::result<std::unique_ptr<Presenter>> build(VulkanBaseEngine* engine) {
         struct enable_Presenter : public Presenter {};
         std::unique_ptr<Presenter> result = std::make_unique<enable_Presenter>();
 
@@ -366,6 +368,10 @@ public:
         result->build_swapchain();
 
         return result;
+    }
+
+    const mff::vulkan::Swapchain* get_swapchain() const {
+        return swapchain_.get();
     }
 
 private:
@@ -408,10 +414,7 @@ private:
             ));
         std::tie(swapchain_, swapchain_images_) = std::move(swapchain_result);
 
-/*        LEAF_AUTO(
-            sample,
-            mff::vulkan::AutoCommandBufferBuilder::build_primary(device_, present_queue_->get_queue_family()));
-*/
+
         return {};
     }
 
@@ -423,7 +426,138 @@ private:
     mff::vulkan::UniqueSemaphore draw_end_semaphore_ = nullptr;
     mff::vulkan::UniqueSwapchain swapchain_ = nullptr;
     std::vector<mff::vulkan::UniqueSwapchainImage> swapchain_images_ = {};
+    std::vector<mff::vulkan::UniqueUnsafeCommandBuffer> command_buffers_ = {};
 
     // mff::vulkan::
 
+};
+
+class RendererContext {
+public:
+    static boost::leaf::result<std::unique_ptr<RendererContext>> build(
+        VulkanBaseEngine* engine,
+        Presenter* presenter
+    ) {
+        struct enable_RendererContext : public RendererContext {};
+        std::unique_ptr<RendererContext> result = std::make_unique<enable_RendererContext>();
+
+        result->engine_ = engine;
+        result->presenter_ = presenter;
+        LEAF_AUTO_TO(
+            result->render_pass_main_,
+            result->build_render_pass(vk::AttachmentLoadOp::eLoad, vk::AttachmentLoadOp::eLoad));
+        LEAF_AUTO_TO(
+            result->render_pass_clear_stencil_,
+            result->build_render_pass(vk::AttachmentLoadOp::eLoad, vk::AttachmentLoadOp::eClear));
+        LEAF_AUTO_TO(
+            result->render_pass_clear_all_,
+            result->build_render_pass(vk::AttachmentLoadOp::eClear, vk::AttachmentLoadOp::eClear));
+
+        return result;
+    }
+
+    const mff::vulkan::RenderPass* get_renderpass() const {
+        return render_pass_main_.get();
+    }
+
+    const mff::vulkan::Device* get_device() const {
+        return engine_->get_device();
+    }
+
+    const mff::vulkan::Swapchain* get_swapchain() const {
+        return presenter_->get_swapchain();
+    }
+
+private:
+    RendererContext() = default;
+
+    boost::leaf::result<mff::vulkan::UniqueRenderPass> build_render_pass(
+        vk::AttachmentLoadOp load_op, vk::AttachmentLoadOp stencil_load_op
+    ) {
+        return mff::vulkan::RenderPassBuilder()
+            .add_attachment(
+                "color",
+                load_op,
+                vk::AttachmentStoreOp::eStore,
+                presenter_->get_swapchain()->get_format(),
+                vk::SampleCountFlagBits::e1,
+                vk::ImageLayout::eColorAttachmentOptimal,
+                vk::ImageLayout::eColorAttachmentOptimal,
+                vk::AttachmentLoadOp::eDontCare,
+                vk::AttachmentStoreOp::eDontCare
+            )
+            .add_attachment(
+                "depth",
+                vk::AttachmentLoadOp::eDontCare,
+                vk::AttachmentStoreOp::eDontCare,
+                find_stencil_format(engine_->get_device()->get_physical_device()).value(),
+                vk::SampleCountFlagBits::e1,
+                vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                stencil_load_op,
+                vk::AttachmentStoreOp::eStore
+            )
+            .add_pass({"color"}, {})
+            .build(engine_->get_device());
+    }
+
+    VulkanBaseEngine* engine_;
+    Presenter* presenter_;
+    mff::vulkan::UniqueRenderPass render_pass_main_ = nullptr;
+    mff::vulkan::UniqueRenderPass render_pass_clear_stencil_ = nullptr;
+    mff::vulkan::UniqueRenderPass render_pass_clear_all_ = nullptr;
+};
+
+class RendererSurface {
+public:
+    static boost::leaf::result<std::unique_ptr<RendererSurface>> build(
+        RendererContext* renderer, std::array<std::uint32_t, 2> dimensions
+    ) {
+        struct enable_RendererSurface : public RendererSurface {};
+        std::unique_ptr<RendererSurface> result = std::make_unique<enable_RendererSurface>();
+
+        result->renderer_ = renderer;
+
+        LEAF_AUTO_TO(
+            result->image_,
+            mff::vulkan::AttachmentImage::build(
+                result->renderer_->get_device(),
+                dimensions,
+                result->renderer_->get_swapchain()->get_format(),
+                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment
+                    | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc,
+                vk::SampleCountFlagBits::e1
+            ));
+
+        LEAF_AUTO_TO(
+            result->stencil_,
+            mff::vulkan::AttachmentImage::build(
+                result->renderer_->get_device(),
+                dimensions,
+                vk::Format::eS8Uint,
+                vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst
+                    | vk::ImageUsageFlagBits::eTransferSrc,
+                vk::SampleCountFlagBits::e1
+            ));
+
+        LEAF_AUTO_TO(
+            result->framebuffer_,
+            mff::vulkan::FramebufferBuilder::start(result->renderer_->get_renderpass())
+                .add(result->image_->get_image_view_impl())
+                .add(result->stencil_->get_image_view_impl())
+                .build());
+
+        return result;
+    }
+
+private:
+    RendererSurface() = default;
+
+    RendererContext* renderer_;
+    std::array<std::uint32_t, 2> dimensions_;
+    vk::Format format_;
+    mff::vulkan::UniqueFramebuffer framebuffer_;
+    mff::vulkan::UniqueAttachmentImage image_;
+    mff::vulkan::UniqueAttachmentImage stencil_;
+    bool new_;
 };

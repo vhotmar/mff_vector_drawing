@@ -2,13 +2,14 @@
 
 #include <utility>
 
+#include <range/v3/all.hpp>
 #include <mff/algorithms.h>
 #include <mff/optional.h>
 #include <mff/graphics/utils.h>
 
 namespace mff::vulkan {
 
-boost::leaf::result<std::unique_ptr<RenderPass>> RenderPass::build(
+boost::leaf::result<UniqueRenderPass> RenderPass::build(
     const Device* device,
     const std::vector<AttachmentDescription>& attachments,
     const std::vector<SubpassDescription>& subpasses,
@@ -21,13 +22,9 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPass::build(
     std::vector<vk::SubpassDescription> vk_descriptions;
     std::vector<vk::SubpassDependency> vk_dependencies;
 
-    // convert attachments to their vulkan representation
-    std::vector<vk::AttachmentDescription> vk_attachments = mff::map(
-        [](const AttachmentDescription& attachment) {
-            return attachment.to_vulkan();
-        },
-        attachments
-    );
+    auto vk_attachments = attachments
+        | ranges::views::transform([](const auto& attachment) { return attachment.to_vulkan(); })
+        | ranges::to<std::vector>();
 
     std::size_t index = 0;
 
@@ -77,27 +74,54 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPass::build(
                 color_ptr,
                 resolve_ptr,
                 depth_ptr.has_value() ? depth_ptr.value() : nullptr,
-                preserve_attachments[index].size(),
-                preserve_attachments[index].empty() ? nullptr : preserve_attachments[index].data()));
+                0,
+                nullptr
+            ));
+        //preserve_attachments[index].size(),
+        //preserve_attachments[index].empty() ? nullptr : preserve_attachments[index].data()));
     }
 
     for (const auto& dependency: dependencies) {
         vk_dependencies.push_back(dependency.to_vulkan());
     }
 
+
+    vk::SubpassDependency color_dependency(
+        VK_SUBPASS_EXTERNAL,
+        0,
+        vk::PipelineStageFlagBits::eBottomOfPipe,
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::AccessFlagBits::eMemoryRead,
+        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
+        vk::DependencyFlagBits::eByRegion
+    );
+
+    vk::SubpassDependency depth_dependency(
+        0,
+        VK_SUBPASS_EXTERNAL,
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits::eBottomOfPipe,
+        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
+        vk::AccessFlagBits::eMemoryRead,
+        vk::DependencyFlagBits::eByRegion
+    );
+
+    std::vector<vk::SubpassDependency> dpndcies = {color_dependency};
+
     vk::RenderPassCreateInfo info(
         {},
         vk_attachments.size(),
-        vk_attachments.data(),
+        vk_attachments.empty() ? nullptr : vk_attachments.data(),
         vk_descriptions.size(),
-        vk_descriptions.data(),
+        vk_descriptions.empty() ? nullptr : vk_descriptions.data(),
         vk_dependencies.size(),
-        vk_dependencies.data()
+        vk_dependencies.empty() ? nullptr : vk_dependencies.data()
     );
 
     struct enable_RenderPass : public RenderPass {};
     std::unique_ptr<RenderPass> render_pass = std::make_unique<enable_RenderPass>();
 
+    LEAF_AUTO_TO(render_pass->handle_, to_result(device->get_handle().createRenderPassUnique(info)));
     render_pass->device_ = device;
     render_pass->attachments_ = attachments;
     render_pass->subpasses_.reserve(subpasses.size());
@@ -113,8 +137,6 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPass::build(
 
         render_pass->subpasses_.push_back(std::move(subpass));
     }
-
-    LEAF_AUTO_TO(render_pass->handle_, to_result(device->get_handle().createRenderPassUnique(info)));
 
     return render_pass;
 }
@@ -145,7 +167,9 @@ RenderPassBuilder& RenderPassBuilder::add_attachment(
     vk::Format format,
     vk::SampleCountFlagBits samples,
     std::optional<vk::ImageLayout> initial_layout,
-    std::optional<vk::ImageLayout> final_layout
+    std::optional<vk::ImageLayout> final_layout,
+    std::optional<vk::AttachmentLoadOp> stencil_load,
+    std::optional<vk::AttachmentStoreOp> stencil_store
 ) {
     // if (get_attachment_offset())
     attachments_.push_back(
@@ -156,7 +180,9 @@ RenderPassBuilder& RenderPassBuilder::add_attachment(
             format,
             samples,
             initial_layout,
-            final_layout
+            final_layout,
+            stencil_load,
+            stencil_store
         }
     );
 
@@ -251,8 +277,8 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPassBuilder::build(const 
                 attachment.samples,
                 attachment.load,
                 attachment.store,
-                attachment.load,
-                attachment.store,
+                attachment.stencil_load.value_or(attachment.load),
+                attachment.stencil_store.value_or(attachment.store),
                 initial_layout.value(),
                 final_layout.value()
             }
@@ -316,17 +342,19 @@ boost::leaf::result<std::unique_ptr<RenderPass>> RenderPassBuilder::build(const 
             }
         );
 
-        dependencies.push_back(
-            SubpassDependency{
-                index,
-                index + 1,
-                vk::PipelineStageFlagBits::eAllGraphics,
-                vk::PipelineStageFlagBits::eAllGraphics,
-                {},
-                vk::AccessFlagBits::eColorAttachmentWrite,
-                true
-            }
-        );
+        if (index + 1 < passes_.size()) {
+            dependencies.push_back(
+                SubpassDependency{
+                    index,
+                    index + 1,
+                    vk::PipelineStageFlagBits::eAllGraphics,
+                    vk::PipelineStageFlagBits::eAllGraphics,
+                    {},
+                    vk::AccessFlagBits::eColorAttachmentWrite,
+                    true
+                }
+            );
+        }
 
         index++;
     }
