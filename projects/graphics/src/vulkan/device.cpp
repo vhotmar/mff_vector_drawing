@@ -108,12 +108,14 @@ boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::
     LEAF_AUTO_TO(device->allocator_, vma::Allocator::build(device.get()));
     device->semaphores_pool_ = std::make_unique<ObjectPool<mff::vulkan::Semaphore>>(
         [&]() {
+            assert(false);
             return mff::vulkan::Semaphore::build(device.get());
         }
     );
 
     device->fences_pool_ = std::make_unique<ObjectPool<mff::vulkan::Fence>>(
         [&]() {
+            assert(false);
             return mff::vulkan::Fence::build(device.get(), false);
         }
     );
@@ -153,11 +155,11 @@ const vma::Allocator* Device::get_allocator() const {
     return allocator_.get();
 }
 
-mff::ObjectPool<mff::vulkan::Semaphore>* Device::get_semaphore_pool() const {
+mff::ObjectPool<mff::vulkan::Semaphore>* Device::get_semaphore_pool() {
     return semaphores_pool_.get();
 }
 
-mff::ObjectPool<mff::vulkan::Fence>* Device::get_fence_pool() const {
+mff::ObjectPool<mff::vulkan::Fence>* Device::get_fence_pool() {
     return fences_pool_.get();
 }
 

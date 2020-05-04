@@ -21,7 +21,7 @@ public:
     vk::Fence get_handle() const;
 
     static boost::leaf::result<UniqueFence> build(const Device* device, bool signaled);
-    static boost::leaf::result<UniquePooledFence> from_pool(const Device* device);
+    static boost::leaf::result<UniquePooledFence> from_pool(Device* device);
 
 private:
     Fence() = default;

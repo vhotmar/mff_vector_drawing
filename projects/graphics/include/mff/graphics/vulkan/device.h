@@ -91,8 +91,8 @@ public:
 
     const vma::Allocator* get_allocator() const;
 
-    mff::ObjectPool<mff::vulkan::Fence>* get_fence_pool() const;
-    mff::ObjectPool<mff::vulkan::Semaphore>* get_semaphore_pool() const;
+    mff::ObjectPool<mff::vulkan::Fence>* get_fence_pool();
+    mff::ObjectPool<mff::vulkan::Semaphore>* get_semaphore_pool();
 
     /**
      * Get command pool for this device and specified queue family (non-const because can allocate)

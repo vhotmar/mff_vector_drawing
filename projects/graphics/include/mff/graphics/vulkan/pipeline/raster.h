@@ -16,22 +16,17 @@ struct DepthBias {
     float slope_factor;
 };
 
-class DepthBiasControl {
-public:
-    struct Disabled {};
+namespace DepthBiasControl_ {
 
-    struct Static {
-        DepthBias bias;
-    };
+struct Disabled {};
 
-    using type = std::variant<Disabled, Static>;
-
-private:
-    type inner_;
-
-public:
-    const type& get_inner() const;
+struct Static {
+    DepthBias bias;
 };
+
+}
+
+using DepthBiasControl = std::variant<DepthBiasControl_::Disabled, DepthBiasControl_::Static>;
 
 /**
  * State of rasterizer

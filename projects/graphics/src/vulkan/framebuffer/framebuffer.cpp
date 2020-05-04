@@ -112,4 +112,8 @@ boost::leaf::result<UniqueFramebuffer> FramebufferBuilder::build() {
     return result;
 }
 
+vk::Framebuffer Framebuffer::get_handle() const {
+    return handle_.get();
+}
+
 }

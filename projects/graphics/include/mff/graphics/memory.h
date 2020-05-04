@@ -33,6 +33,8 @@ public:
     vk::DeviceSize get_size() const;
 
     vk::Buffer get_buffer() const;
+    const VmaAllocation& get_allocation() const;
+    VmaAllocationInfo& get_allocation_info();
 
 private:
     Buffer() = default;
@@ -41,6 +43,7 @@ private:
     vk::Buffer buffer_;
     vk::BufferCreateInfo info_;
     VmaAllocation allocation_;
+    VmaAllocationInfo allocation_info_;
 };
 
 /**

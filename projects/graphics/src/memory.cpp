@@ -69,7 +69,7 @@ boost::leaf::result<UniqueBuffer> Allocator::create_buffer(
                 &allocation_info,
                 reinterpret_cast<VkBuffer*>(&buffer->buffer_),
                 &buffer->allocation_,
-                nullptr
+                &buffer->allocation_info_
             )));
 
     return std::move(buffer);
@@ -98,5 +98,14 @@ boost::leaf::result<UniqueImage> Allocator::create_image(
 
     return std::move(image);
 };
+
+const VmaAllocation& Buffer::get_allocation() const {
+    return allocation_;
+}
+
+VmaAllocationInfo& Buffer::get_allocation_info() {
+    return allocation_info_;
+}
+
 
 }

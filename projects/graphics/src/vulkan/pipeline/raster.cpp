@@ -8,14 +8,14 @@ vk::PipelineRasterizationStateCreateInfo Rasterization::to_vulkan() const {
     using dp_info = std::tuple<bool, float, float, float>;
     auto[db_enable, db_const, db_clamp, db_slope] = std::visit(
         overloaded{
-            [](DepthBiasControl::Disabled d) -> dp_info {
+            [](DepthBiasControl_::Disabled d) -> dp_info {
                 return std::make_tuple(true, 0.0f, 0.0f, 0.0f);
             },
-            [](DepthBiasControl::Static s) -> dp_info {
+            [](DepthBiasControl_::Static s) -> dp_info {
                 return std::make_tuple(true, s.bias.constant_factor, s.bias.clamp, s.bias.slope_factor);
             },
         },
-        depth_bias.get_inner()
+        depth_bias
     );
 
     return vk::PipelineRasterizationStateCreateInfo(
@@ -31,10 +31,6 @@ vk::PipelineRasterizationStateCreateInfo Rasterization::to_vulkan() const {
         db_slope,
         line_width.value_or(1.0)
     );
-}
-
-const DepthBiasControl::type& DepthBiasControl::get_inner() const {
-    return inner_;
 }
 
 }

@@ -21,7 +21,7 @@ public:
     vk::Semaphore get_handle() const;
 
     static boost::leaf::result<UniqueSemaphore> build(const Device* device);
-    static boost::leaf::result<UniquePooledSemaphore> from_pool(const Device* device);
+    static boost::leaf::result<UniquePooledSemaphore> from_pool(Device* device);
 
 private:
     Semaphore() = default;

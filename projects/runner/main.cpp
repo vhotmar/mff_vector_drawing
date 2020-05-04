@@ -24,8 +24,11 @@ boost::leaf::result<void> run() {
 
     LEAF_AUTO(engine, VulkanBaseEngine::build(window));
     LEAF_AUTO(presenter, Presenter::build(engine.get()));
-    LEAF_AUTO(renderer, RendererContext::build(engine.get(), presenter.get()));
-    LEAF_AUTO(renderer_surface, RendererSurface::build(renderer.get(), {kWIDTH, kHEIGHT}));
+    LEAF_AUTO(renderer_context, RendererContext::build(engine.get(), presenter.get()));
+    LEAF_AUTO(renderer_surface, RendererSurface::build(renderer_context.get(), {kWIDTH, kHEIGHT}));
+    LEAF_AUTO(
+        renderer,
+        Renderer::build(renderer_context.get(), renderer_surface.get(), engine->get_queues().graphics_queue));
 
     LEAF_CHECK(presenter->build_commands(renderer_surface->get_main_image(), {kWIDTH, kHEIGHT}));
 
@@ -33,8 +36,17 @@ boost::leaf::result<void> run() {
 
     // LEAF_CHECK(renderer.init());
 
+    bool first = true;
+
     auto draw = [&]() -> boost::leaf::result<void> {
         // draw commands
+        if (!first) {
+            renderer->draw(
+                {Vertex{{0.3f, 0.5f}}, Vertex{{0.5f, 0.5f}}, Vertex{{0.5f, 0.3f}}},
+                {0, 1, 2},
+                PushConstants{1.0f}
+            );
+        }
 
         LEAF_AUTO(fresh, presenter->draw());
 
@@ -43,6 +55,8 @@ boost::leaf::result<void> run() {
         }
 
         engine->get_device()->get_handle().waitIdle();
+
+        first = false;
 
         return {};
     };

@@ -24,7 +24,7 @@ vk::Fence Fence::get_handle() const {
     return handle_.get();
 }
 
-boost::leaf::result<UniquePooledFence> Fence::from_pool(const Device* device) {
+boost::leaf::result<UniquePooledFence> Fence::from_pool(Device* device) {
     LEAF_AUTO(result, device->get_fence_pool()->acquire());
 
     return std::move(result);

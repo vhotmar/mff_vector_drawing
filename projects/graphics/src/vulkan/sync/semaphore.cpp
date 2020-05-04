@@ -24,7 +24,7 @@ vk::Semaphore Semaphore::get_handle() const {
     return handle_.get();
 }
 
-boost::leaf::result<UniquePooledSemaphore> Semaphore::from_pool(const Device* device) {
+boost::leaf::result<UniquePooledSemaphore> Semaphore::from_pool(Device* device) {
     LEAF_AUTO(result, device->get_semaphore_pool()->acquire());
 
     return std::move(result);

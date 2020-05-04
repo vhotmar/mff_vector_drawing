@@ -69,35 +69,28 @@ struct Stencil {
     vk::StencilOpState to_vulkan() const;
 };
 
-template <typename T>
-class VariantTrait {};
 
-template <typename Parent, typename Item>
-class VariantEnumItem {
-public:
-    operator Parent() {
-        return Parent(typename Parent::type{*static_cast<Item*>(this)});
-    };
+namespace DepthBounds_ {
+
+/**
+ * There is no depth testing
+ */
+struct Disabled {};
+
+/**
+ * The depth testing range is fixed
+ */
+struct Fixed {
+    float from;
+    float to;
 };
 
-template <typename T>
-class VariantEnum {
+/**
+ * The depth testing is dynamic and will be set during render
+ */
+struct Dynamic {};
 
-    VariantEnum(const typename VariantTrait<T>::type& t);
-
-    const typename VariantTrait<T>::type& get_inner() const;
-
-private:
-    typename VariantTrait<T>::type inner_;
-};
-
-class SampleEvent : VariantEnum<SampleEvent> {
-    struct Open : VariantEnumItem<SampleEvent, Open> {};
-    struct Resized : VariantEnumItem<SampleEvent, Open> {};
-    struct Moved : VariantEnumItem<SampleEvent, Open> {};
-
-    using type = std::variant<Open, Resized, Moved>;
-};
+}
 
 /**
  * Describe depth bound testing part of DepthStencil. It allows you to ask the GPU to exclude
@@ -105,33 +98,7 @@ class SampleEvent : VariantEnum<SampleEvent> {
  *
  * @see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap27.html#VkPipelineDepthStencilStateCreateInfo
  */
-class DepthBounds : VariantEnum<DepthBounds> {
-public:
-    /**
-     * There is no depth testing
-     */
-    struct Disabled : VariantItem<DepthBounds, Disabled> {};
-
-    /**
-     * The depth testing range is fixed
-     */
-    struct Fixed : VariantItem<DepthBounds, Fixed> {
-        float from;
-        float to;
-    };
-
-    /**
-     * The depth testing is dynamic and will be set during render
-     */
-    struct Dynamic {};
-
-    using type = std::variant<Disabled, Fixed, Dynamic>;
-};
-
-template <>
-class VariantTrait<DepthBounds> {
-    using type = std::variant<DepthBounds::Disabled, DepthBounds::Fixed, DepthBounds::Dynamic>;
-};
+using DepthBounds = std::variant<DepthBounds_::Disabled, DepthBounds_::Fixed, DepthBounds_::Dynamic>;
 
 /**
  * Configuration of depth and stencil tests.
@@ -153,7 +120,7 @@ struct DepthStencil {
     /**
      * Allows you to ask the GPU to exclude fragments that are outside of a certain range.
      */
-    DepthBounds depth_bounds_test = DepthBounds::Disabled{};
+    DepthBounds depth_bounds_test = DepthBounds_::Disabled{};
 
     /**
      * Stencil operations to use for points, lines and triangles whose front is facing the user.

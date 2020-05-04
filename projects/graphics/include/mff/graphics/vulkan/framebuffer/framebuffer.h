@@ -39,6 +39,9 @@ using UniqueFramebuffer = std::unique_ptr<Framebuffer>;
 class Framebuffer {
     friend class FramebufferBuilder;
 
+public:
+    vk::Framebuffer get_handle() const;
+
 private:
     Framebuffer() = default;
 
