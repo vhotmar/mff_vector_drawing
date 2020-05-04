@@ -9,6 +9,8 @@
 #include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/image/image.h>
+#include <mff/graphics/vulkan/sync/fence.h>
+#include <mff/graphics/vulkan/sync/semaphore.h>
 #include <mff/graphics/vulkan/sync/sync.h>
 #include <mff/graphics/vulkan/vulkan.h>
 #include <mff/graphics/window/window.h>
@@ -16,6 +18,8 @@
 namespace mff::vulkan {
 
 class Device;
+class Fence;
+class Semaphore;
 class Swapchain;
 class SwapchainImage;
 class UnsafeImage;
@@ -249,6 +253,11 @@ public:
      * @return the format with which was swapchain created
      */
     vk::Format get_format() const;
+
+    boost::leaf::result<std::tuple<std::uint32_t, bool>> acquire_next_image_raw(
+        std::optional<const Semaphore*> semaphore,
+        std::optional<const Fence*> fence
+    );
 
     /**
      * Builds a new swapchain and corresponding swapchain images (and their views)

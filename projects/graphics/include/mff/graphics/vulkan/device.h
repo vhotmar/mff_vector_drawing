@@ -10,6 +10,7 @@
 #include <mff/graphics/memory.h>
 #include <mff/graphics/vulkan/instance.h>
 #include <mff/graphics/vulkan/command_buffer/command_pool.h>
+#include <mff/graphics/vulkan/sync/fence.h>
 #include <mff/graphics/vulkan/sync/sync.h>
 #include <mff/graphics/vulkan/sync/semaphore.h>
 #include <mff/graphics/vulkan/vulkan.h>
@@ -90,6 +91,7 @@ public:
 
     const vma::Allocator* get_allocator() const;
 
+    mff::ObjectPool<mff::vulkan::Fence>* get_fence_pool() const;
     mff::ObjectPool<mff::vulkan::Semaphore>* get_semaphore_pool() const;
 
     /**
@@ -125,6 +127,7 @@ private:
     std::unordered_map<std::uint32_t, UniqueCommandPool> command_pools_ = {};
     vma::UniqueAllocator allocator_ = nullptr;
     mff::UniqueObjectPool<mff::vulkan::Semaphore> semaphores_pool_ = nullptr;
+    mff::UniqueObjectPool<mff::vulkan::Fence> fences_pool_ = nullptr;
 };
 
 }

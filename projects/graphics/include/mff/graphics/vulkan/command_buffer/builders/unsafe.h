@@ -95,6 +95,11 @@ public:
         const QueueFamily* family
     );
 
+    static boost::leaf::result<UniqueUnsafeCommandBufferBuilder> from_buffer(
+        vk::CommandBuffer cmd_buffer,
+        vk::CommandBufferUsageFlags usage
+    );
+
     void pipeline_barrier(UnsafeCommandBufferBuilderPipelineBarrier command);
 
     void copy_image(

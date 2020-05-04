@@ -249,6 +249,9 @@ boost::leaf::result<UniqueSwapchainImage> SwapchainImage::build(const Swapchain*
 
     LEAF_AUTO_TO(result->view_, UnsafeImageView::build(image.get_image(), vk::ImageViewType::e2D, 0, 1, 0, 1));
 
+    result->image_impl_ = std::make_unique<ImageImpl>(result.get());
+    result->image_view_impl_ = std::make_unique<ImageViewImpl>(result.get());
+
     return result;
 }
 
@@ -392,5 +395,32 @@ boost::leaf::result<UniqueAttachmentImage> AttachmentImage::build(
 
 const Image* AttachmentImage::get_image_impl() const { return image_impl_.get(); }
 const ImageView* AttachmentImage::get_image_view_impl() const { return image_view_impl_.get(); }
+
+SwapchainImage::ImageImpl::ImageImpl(const SwapchainImage* image): image_(image) {
+}
+
+const InnerImage& SwapchainImage::ImageImpl::get_inner_image() const {
+    return image_->image_;
+}
+
+SwapchainImage::ImageViewImpl::ImageViewImpl(const SwapchainImage* image): image_(image) {
+}
+
+const UnsafeImageView* SwapchainImage::ImageViewImpl::get_inner_image_view() const {
+    return image_->view_.get();
+}
+
+ImageDimensions SwapchainImage::ImageViewImpl::get_dimensions() const {
+    return image_->image_.get_image()->get_dimensions();
+}
+
+
+const Image* SwapchainImage::get_image_impl() const {
+    return image_impl_.get();
+}
+
+const ImageView* SwapchainImage::get_image_view_impl() const {
+    return image_view_impl_.get();
+}
 
 }

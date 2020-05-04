@@ -119,11 +119,33 @@ void UnsafeCommandBufferBuilder::copy_image(
 boost::leaf::result<UniqueUnsafeCommandBuffer> UnsafeCommandBufferBuilder::build() {
     LEAF_CHECK(to_result(command_buffer_.end()));
 
-    struct enable_UnsafeCommandBuffer: public UnsafeCommandBuffer {};
+    struct enable_UnsafeCommandBuffer : public UnsafeCommandBuffer {};
     UniqueUnsafeCommandBuffer result = std::make_unique<enable_UnsafeCommandBuffer>();
 
     result->command_buffer_ = command_buffer_;
     result->allocation_ = std::move(allocation_);
+
+    return result;
+}
+
+boost::leaf::result<UniqueUnsafeCommandBufferBuilder> UnsafeCommandBufferBuilder::from_buffer(
+    vk::CommandBuffer cmd_buffer,
+    vk::CommandBufferUsageFlags usage
+) {
+    LEAF_CHECK(to_result(cmd_buffer.reset({})));
+    LEAF_CHECK(
+        to_result(
+            cmd_buffer.begin(
+                vk::CommandBufferBeginInfo(
+                    usage,
+                    nullptr
+                ))));
+
+    struct enable_UnsafeCommandBufferBuilder : public UnsafeCommandBufferBuilder {};
+    UniqueUnsafeCommandBufferBuilder result = std::make_unique<enable_UnsafeCommandBufferBuilder>();
+
+    result->command_buffer_ = cmd_buffer;
+    result->allocation_ = nullptr;
 
     return result;
 }

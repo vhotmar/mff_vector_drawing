@@ -4,6 +4,7 @@
 
 #include <range/v3/all.hpp>
 #include <mff/algorithms.h>
+#include <mff/optional.h>
 #include <mff/utils.h>
 #include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/image/image.h>
@@ -46,6 +47,26 @@ vk::SurfaceKHR Surface::get_handle() const {
 
 vk::SwapchainKHR Swapchain::get_handle() const {
     return handle_.get();
+}
+
+boost::leaf::result<std::tuple<std::uint32_t, bool>> Swapchain::acquire_next_image_raw(
+    std::optional<const Semaphore*> semaphore,
+    std::optional<const Fence*> fence
+) {
+    auto res = device_->get_handle()
+        .acquireNextImageKHR(
+            handle_.get(),
+            std::numeric_limits<std::uint64_t>::max(),
+            optional::map(semaphore, [](const auto& i) { return i->get_handle(); }).value_or(vk::Semaphore()),
+            optional::map(fence, [](const auto& i) { return i->get_handle(); }).value_or(vk::Fence()));
+
+    if (res.result == vk::Result::eSuccess) {
+        return std::make_tuple(res.value, true);
+    } else if (res.result == vk::Result::eSuboptimalKHR) {
+        return std::make_tuple(res.value, false);
+    }
+
+    return boost::leaf::new_error(res.result);
 }
 
 boost::leaf::result<std::tuple<UniqueSwapchain, std::vector<UniqueSwapchainImage>>> Swapchain::build(

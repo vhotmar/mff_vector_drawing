@@ -172,100 +172,6 @@ std::optional<vk::Format> find_stencil_format(
 }
 
 /**
- * Create render pass with specified load operations
- * @param device vk::Device where to create the render_pass
- * @param physical_device vk::PhysicalDevice (the origin of device)
- * @param color_format the color format ot use (use swapchain format)
- * @param load_op
- * @param stencil_load_op
- * @return
- */
-boost::leaf::result<vk::UniqueRenderPass> create_render_pass(
-    const vk::Device& device,
-    const vk::PhysicalDevice& physical_device,
-    const vk::Format& color_format,
-    const vk::AttachmentLoadOp& load_op,
-    const vk::AttachmentLoadOp& stencil_load_op
-) {
-    auto stencil_format = std::make_optional(vk::Format::eS8Uint);// find_stencil_format(physical_device);
-    if (!stencil_format) return LEAF_NEW_ERROR();
-
-    vk::AttachmentDescription color_attachment(
-        {},
-        color_format,
-        vk::SampleCountFlagBits::e1,
-        load_op,
-        vk::AttachmentStoreOp::eStore,
-        vk::AttachmentLoadOp::eDontCare,
-        vk::AttachmentStoreOp::eDontCare,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::ImageLayout::eColorAttachmentOptimal
-    );
-
-    vk::AttachmentDescription stencil_attachment(
-        {},
-        stencil_format.value(),
-        vk::SampleCountFlagBits::e1,
-        vk::AttachmentLoadOp::eDontCare,
-        vk::AttachmentStoreOp::eDontCare,
-        stencil_load_op,
-        vk::AttachmentStoreOp::eStore,
-        vk::ImageLayout::eDepthStencilAttachmentOptimal,
-        vk::ImageLayout::eDepthStencilAttachmentOptimal
-    );
-
-    std::vector<vk::AttachmentDescription> attachments = {color_attachment, stencil_attachment};
-
-    vk::AttachmentReference color_attachment_ref(0, vk::ImageLayout::eColorAttachmentOptimal);
-    vk::AttachmentReference depth_attachment_ref(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-    vk::SubpassDescription subpass(
-        {},
-        vk::PipelineBindPoint::eGraphics,
-        0,
-        nullptr,
-        1,
-        &color_attachment_ref,
-        nullptr,
-        &depth_attachment_ref
-    );
-
-    vk::SubpassDependency color_dependency(
-        VK_SUBPASS_EXTERNAL,
-        0,
-        vk::PipelineStageFlagBits::eBottomOfPipe,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::AccessFlagBits::eMemoryRead,
-        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
-        vk::DependencyFlagBits::eByRegion
-    );
-
-    vk::SubpassDependency depth_dependency(
-        0,
-        VK_SUBPASS_EXTERNAL,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits::eBottomOfPipe,
-        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
-        vk::AccessFlagBits::eMemoryRead,
-        vk::DependencyFlagBits::eByRegion
-    );
-
-    std::vector<vk::SubpassDependency> dependencies = {color_dependency, depth_dependency};
-
-    vk::RenderPassCreateInfo render_pass_info(
-        {},
-        attachments.size(),
-        attachments.data(),
-        1,
-        &subpass,
-        dependencies.size(),
-        dependencies.data()
-    );
-
-    return mff::to_result(device.createRenderPassUnique(render_pass_info));
-}
-
-/**
  * This class provides us with resources which do not change really (and this can be reused...)
  */
 class VulkanBaseEngine {
@@ -374,10 +280,151 @@ public:
         return swapchain_.get();
     }
 
+    boost::leaf::result<void> build_commands(
+        const mff::vulkan::Image* source,
+        std::array<std::uint32_t, 2> dimensions
+    ) {
+        std::size_t index = 0;
+        for (const auto& alloc: command_buffer_allocations_) {
+            LEAF_AUTO(builder, mff::vulkan::UnsafeCommandBufferBuilder::from_buffer(alloc->get_handle(), {}));
+
+            auto destination = swapchain_images_[index]->get_image_impl();
+
+            // TODO: should be automated using SyncCommandBufferBuilder
+            builder->pipeline_barrier(
+                mff::vulkan::UnsafeCommandBufferBuilderPipelineBarrier()
+                    .add_image_memory_barrier(
+                        destination,
+                        0,
+                        1,
+                        0,
+                        1,
+                        vk::PipelineStageFlagBits::eBottomOfPipe,
+                        {},
+                        vk::PipelineStageFlagBits::eTransfer,
+                        vk::AccessFlagBits::eTransferWrite,
+                        true,
+                        std::nullopt,
+                        vk::ImageLayout::eUndefined,
+                        vk::ImageLayout::eTransferDstOptimal
+                    )
+                    .add_image_memory_barrier(
+                        source,
+                        0,
+                        1,
+                        0,
+                        1,
+                        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                        vk::AccessFlagBits::eColorAttachmentWrite,
+                        vk::PipelineStageFlagBits::eTransfer,
+                        vk::AccessFlagBits::eTransferRead,
+                        true,
+                        std::nullopt,
+                        vk::ImageLayout::eColorAttachmentOptimal,
+                        vk::ImageLayout::eTransferSrcOptimal
+                    ));
+
+            builder->copy_image(
+                source,
+                vk::ImageLayout::eTransferSrcOptimal,
+                destination,
+                vk::ImageLayout::eTransferDstOptimal,
+                {mff::vulkan::UnsafeCommandBufferBuilderImageCopy{
+                    {true, false, false},
+                    0,
+                    1,
+                    0,
+                    1,
+                    1,
+                    {0, 0, 0},
+                    {0, 0, 0},
+                    {800, 600, 1}}}
+            );
+
+            builder->pipeline_barrier(
+                mff::vulkan::UnsafeCommandBufferBuilderPipelineBarrier()
+                    .add_image_memory_barrier(
+                        destination,
+                        0,
+                        1,
+                        0,
+                        1,
+                        vk::PipelineStageFlagBits::eTransfer,
+                        vk::AccessFlagBits::eTransferWrite,
+                        vk::PipelineStageFlagBits::eBottomOfPipe,
+                        {},
+                        true,
+                        std::nullopt,
+                        vk::ImageLayout::eTransferDstOptimal,
+                        vk::ImageLayout::ePresentSrcKHR
+                    )
+                    .add_image_memory_barrier(
+                        source,
+                        0,
+                        1,
+                        0,
+                        1,
+                        vk::PipelineStageFlagBits::eTransfer,
+                        {},
+                        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                        vk::AccessFlagBits::eColorAttachmentWrite,
+                        true,
+                        std::nullopt,
+                        vk::ImageLayout::eTransferSrcOptimal,
+                        vk::ImageLayout::eColorAttachmentOptimal
+                    ));
+
+            builder->build();
+            index++;
+        }
+
+        return {};
+    }
+
+    boost::leaf::result<bool> draw() {
+        LEAF_AUTO(acquire_result, swapchain_->acquire_next_image_raw(present_end_semaphore_.get(), std::nullopt));
+        auto[index, optimal] = acquire_result;
+
+        if (!optimal) {
+            LEAF_CHECK(build_swapchain());
+
+            return false;
+        }
+
+        auto swapchain = swapchain_->get_handle();
+        auto present_end = present_end_semaphore_->get_handle();
+        auto draw_end = draw_end_semaphore_->get_handle();
+        auto buffer = command_buffer_allocations_[index]->get_handle();
+        vk::PipelineStageFlags flag = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+        LEAF_CHECK(
+            mff::to_result(
+                present_queue_->get_handle()
+                    .submit(
+                        {vk::SubmitInfo(
+                            1,
+                            &present_end,
+                            &flag,
+                            1,
+                            &buffer,
+                            1,
+                            &draw_end
+                        )},
+                        {}
+                    )));
+
+        LEAF_CHECK(mff::to_result(
+            present_queue_->get_handle()
+                .presentKHR(vk::PresentInfoKHR(1, &draw_end, 1, &swapchain, &index))));
+
+        return true;
+    }
+
 private:
     Presenter() = default;
 
     boost::leaf::result<void> build_swapchain() {
+        logger::main->info("Rebuilding swapchain");
         LEAF_AUTO(capabilities, surface_->get_capabilities(device_->get_physical_device()));
 
         LEAF_CHECK_OPTIONAL(
@@ -414,6 +461,8 @@ private:
             ));
         std::tie(swapchain_, swapchain_images_) = std::move(swapchain_result);
 
+        LEAF_AUTO(command_pool, device_->get_command_pool(present_queue_->get_queue_family()));
+        LEAF_AUTO_TO(command_buffer_allocations_, command_pool->allocate(swapchain_images_.size()));
 
         return {};
     }
@@ -426,7 +475,7 @@ private:
     mff::vulkan::UniqueSemaphore draw_end_semaphore_ = nullptr;
     mff::vulkan::UniqueSwapchain swapchain_ = nullptr;
     std::vector<mff::vulkan::UniqueSwapchainImage> swapchain_images_ = {};
-    std::vector<mff::vulkan::UniqueUnsafeCommandBuffer> command_buffers_ = {};
+    std::vector<mff::vulkan::UniqueCommandPoolAllocation> command_buffer_allocations_ = {};
 
     // mff::vulkan::
 
@@ -549,6 +598,8 @@ public:
 
         return result;
     }
+
+    const mff::vulkan::Image* get_main_image() const { return image_->get_image_impl(); }
 
 private:
     RendererSurface() = default;

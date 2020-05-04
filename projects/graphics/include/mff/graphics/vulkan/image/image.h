@@ -174,20 +174,31 @@ class SwapchainImage;
 using UniqueSwapchainImage = std::unique_ptr<SwapchainImage>;
 
 class SwapchainImage {
-public:
+private:
     class ImageImpl : public Image {
     public:
+        ImageImpl(const SwapchainImage* image);
+
         const InnerImage& get_inner_image() const override;
+
+    private:
+        const SwapchainImage* image_;
     };
 
     class ImageViewImpl : public ImageView {
     public:
+        ImageViewImpl(const SwapchainImage* image);
+
         const UnsafeImageView* get_inner_image_view() const override;
         ImageDimensions get_dimensions() const override;
+
+    private:
+        const SwapchainImage* image_;
     };
 
-    const ImageImpl* get_image_impl();
-    const ImageViewImpl* get_image_view_impl();
+public:
+    const Image* get_image_impl() const;
+    const ImageView* get_image_view_impl() const;
 
     static boost::leaf::result<UniqueSwapchainImage> build(const Swapchain* swapchain, InnerImage image);
 
@@ -198,7 +209,7 @@ private:
     InnerImage image_ = {nullptr, 0, 1, 0, 1};
     UniqueUnsafeImageView view_ = nullptr;
     std::unique_ptr<ImageImpl> image_impl_;
-    std::unique_ptr<ImageViewImpl> image_view_impl;
+    std::unique_ptr<ImageViewImpl> image_view_impl_;
 };
 
 class AttachmentImage;

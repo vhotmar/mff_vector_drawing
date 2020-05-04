@@ -14,7 +14,7 @@ vk::Offset2D to_offset(Vector2ui v) {
     return vk::Offset2D(v[0], v[1]);
 }
 
-vk::Offset3D to_extent(std::array<std::int32_t, 3> arr) {
+vk::Offset3D to_offset(std::array<std::int32_t, 3> arr) {
     return vk::Offset3D(arr[0], arr[1], arr[2]);
 }
 

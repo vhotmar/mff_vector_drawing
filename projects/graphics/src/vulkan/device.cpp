@@ -112,6 +112,12 @@ boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::
         }
     );
 
+    device->fences_pool_ = std::make_unique<ObjectPool<mff::vulkan::Fence>>(
+        [&]() {
+            return mff::vulkan::Fence::build(device.get(), false);
+        }
+    );
+
     return std::make_tuple(std::move(device), std::move(output_queues));
 }
 
@@ -149,6 +155,10 @@ const vma::Allocator* Device::get_allocator() const {
 
 mff::ObjectPool<mff::vulkan::Semaphore>* Device::get_semaphore_pool() const {
     return semaphores_pool_.get();
+}
+
+mff::ObjectPool<mff::vulkan::Fence>* Device::get_fence_pool() const {
+    return fences_pool_.get();
 }
 
 const vk::Queue& Queue::get_handle() const {

@@ -13,7 +13,7 @@ boost::leaf::result<UniqueCommandPool> CommandPool::build(const Device* device, 
     result->device_ = device;
     result->queue_family_ = queue_family;
 
-    vk::CommandPoolCreateInfo info({}, queue_family->get_index());
+    vk::CommandPoolCreateInfo info(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queue_family->get_index());
     LEAF_AUTO_TO(result->handle_, to_result(device->get_handle().createCommandPoolUnique(info)));
 
     auto make_factory = [&](bool secondary) {
