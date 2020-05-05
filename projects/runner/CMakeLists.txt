@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME} main.cpp)
 
 # add_subdirectory(internal)
 add_subdirectory(renderer)
+add_subdirectory(canvas)
 add_subdirectory(utils)
 
 target_link_libraries(${PROJECT_NAME}

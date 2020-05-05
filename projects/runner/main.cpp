@@ -9,11 +9,23 @@
 #include "./utils/logger.h"
 #include "./canvas.h"
 #include "./renderer/init.h"
+#include "./canvas/svg/path.h"
 
 boost::leaf::result<void> run() {
     mff::logger::vulkan = mff::logger::setup_vulkan_logging();
     mff::logger::window = mff::logger::setup_window_logging();
     mff::window::EventLoop event_loop;
+
+    std::string sample1 = "M 10 20 30 40 L 20 30";
+    std::string sample2 = "M 10 -20";
+    std::string sample3 = "M 10 20.34";
+    std::string sample4 = "m-122.3,84.285s0.1,1.894-0.73,1.875c-0.82-0.019-17.27-48.094-37.8-45.851,0,0,17.78-7.353,38.53,43.976z";
+
+    auto res1 = canvas::svg::parse_path(sample1);
+    auto res2 = canvas::svg::parse_path(sample2);
+    auto res3 = canvas::svg::parse_path(sample3);
+    auto res4 = canvas::svg::parse_path(sample4);
+
 
     std::uint32_t kWIDTH = 800;
     std::uint32_t kHEIGHT = 600;

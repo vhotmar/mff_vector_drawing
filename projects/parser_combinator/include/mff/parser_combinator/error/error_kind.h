@@ -10,6 +10,7 @@ enum class ErrorKind {
     Digit,
     Alt,
     Many0,
+    Many1,
     SeparatedList,
     TakeWhile1,
     TakeWhileMN,
