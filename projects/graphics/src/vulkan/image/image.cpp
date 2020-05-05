@@ -188,10 +188,10 @@ boost::leaf::result<UniqueUnsafeImageView> UnsafeImageView::build(
         type,
         image->get_format(),
         vk::ComponentMapping(
-            vk::ComponentSwizzle::eR,
-            vk::ComponentSwizzle::eG,
-            vk::ComponentSwizzle::eB,
-            vk::ComponentSwizzle::eA
+            vk::ComponentSwizzle::eIdentity,
+            vk::ComponentSwizzle::eIdentity,
+            vk::ComponentSwizzle::eIdentity,
+            vk::ComponentSwizzle::eIdentity
         ),
         vk::ImageSubresourceRange(
             aspect_mask,

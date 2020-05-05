@@ -196,6 +196,7 @@ boost::leaf::result<std::tuple<UniqueSwapchain, std::vector<UniqueSwapchainImage
     swapchain->device_ = device;
     swapchain->surface_ = surface;
     swapchain->format_ = format;
+    swapchain->dimensions_ = dimensions_to_use;
 
     LEAF_AUTO(image_handles, to_result(device->get_handle().getSwapchainImagesKHR(swapchain->handle_.get())));
 
@@ -232,6 +233,10 @@ boost::leaf::result<std::tuple<UniqueSwapchain, std::vector<UniqueSwapchainImage
 
 vk::Format Swapchain::get_format() const {
     return format_;
+}
+
+Vector2ui Swapchain::get_dimensions() const {
+    return dimensions_;
 }
 
 Capabilities::Capabilities(

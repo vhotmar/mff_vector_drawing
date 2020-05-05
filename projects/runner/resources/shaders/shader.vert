@@ -6,9 +6,10 @@ layout(location = 0) out vec4 fragColor;
 
 layout(push_constant) uniform PushConsts {
     float scale;
+    vec4 color;
 } pc;
 
 void main() {
-    gl_Position = vec4(inPosition / pc.scale, 0.0, 1.0);
-    fragColor = vec4(1, 1, 0.0, 0.0);
+    gl_Position = vec4(inPosition, 0.0, 1.0);
+    fragColor = pc.color;
 }

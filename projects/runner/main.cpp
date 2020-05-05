@@ -7,7 +7,8 @@
 #include <mff/graphics/window.h>
 
 #include "./utils/logger.h"
-#include "./renderer2.h"
+#include "./canvas.h"
+#include "./renderer/init.h"
 
 boost::leaf::result<void> run() {
     mff::logger::vulkan = mff::logger::setup_vulkan_logging();
@@ -22,39 +23,46 @@ boost::leaf::result<void> run() {
         .with_title("My app")
         .build(&event_loop));
 
-    LEAF_AUTO(engine, VulkanBaseEngine::build(window));
-    LEAF_AUTO(presenter, Presenter::build(engine.get()));
-    LEAF_AUTO(renderer_context, RendererContext::build(engine.get(), presenter.get()));
-    LEAF_AUTO(renderer_surface, RendererSurface::build(renderer_context.get(), {kWIDTH, kHEIGHT}));
-    LEAF_AUTO(
-        renderer,
-        Renderer::build(renderer_context.get(), renderer_surface.get(), engine->get_queues().graphics_queue));
+    LEAF_AUTO(render_init, RendererInit::build(window));
 
-    LEAF_CHECK(presenter->build_commands(renderer_surface->get_main_image(), {kWIDTH, kHEIGHT}));
+    canvas::Canvas canvas(render_init->get_renderer());
 
     // Renderer renderer(window);
 
     // LEAF_CHECK(renderer.init());
 
     bool first = true;
+    float scale = -0.4f;
 
     auto draw = [&]() -> boost::leaf::result<void> {
         // draw commands
         if (!first) {
-            renderer->draw(
-                {Vertex{{0.3f, 0.5f}}, Vertex{{0.5f, 0.5f}}, Vertex{{0.5f, 0.3f}}},
-                {0, 1, 2},
-                PushConstants{1.0f}
-            );
+            scale += 0.01f;
+
+            canvas::Path2D path;
+            path.move_to({0, 0});
+            path.line_to({0, 1});
+            path.quad_to({0.75, 0.75}, {0, 0});
+            path.close_path();
+
+            canvas.fill(path, {1.0f, 0.0f, 0.0f, 1.0f});
+
+            path = {};
+            path.move_to({ 0, 0 });
+            path.line_to({0, -0.5});
+            path.line_to({-scale, -0.5});
+            path.close_path();
+
+            canvas.fill(path, {scale, 1.0f, 0.0f, 1.0f});
+
+            path = {};
+            path.move_to({ 0, 0 });
+            path.line_to({0.5, -0.5});
+            path.line_to({0.5, 0.5});
+            path.close_path();
         }
 
-        LEAF_AUTO(fresh, presenter->draw());
-
-        if (!fresh) {
-            LEAF_CHECK(presenter->build_commands(renderer_surface->get_main_image(), {kWIDTH, kHEIGHT}));
-        }
-
-        engine->get_device()->get_handle().waitIdle();
+        LEAF_CHECK(render_init->present());
 
         first = false;
 
@@ -76,7 +84,7 @@ boost::leaf::result<void> run() {
                 if (!res) return mff::window::ExecutionControl::Terminate;
             }
 
-            return mff::window::ExecutionControl::Wait;
+            return mff::window::ExecutionControl::Poll;
         }
     );
 

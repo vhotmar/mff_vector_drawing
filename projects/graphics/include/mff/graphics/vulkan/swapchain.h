@@ -254,6 +254,8 @@ public:
      */
     vk::Format get_format() const;
 
+    Vector2ui get_dimensions() const;
+
     boost::leaf::result<std::tuple<std::uint32_t, bool>> acquire_next_image_raw(
         std::optional<const Semaphore*> semaphore,
         std::optional<const Fence*> fence
@@ -301,6 +303,7 @@ private:
     const Device* device_;
     const Surface* surface_;
     vk::Format format_;
+    Vector2ui dimensions_;
 
     std::vector<UniqueUnsafeImage> image_handles_;
 };

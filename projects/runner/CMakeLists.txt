@@ -13,6 +13,7 @@ find_package(leaf CONFIG REQUIRED)
 add_executable(${PROJECT_NAME} main.cpp)
 
 # add_subdirectory(internal)
+add_subdirectory(renderer)
 add_subdirectory(utils)
 
 target_link_libraries(${PROJECT_NAME}

@@ -4,6 +4,25 @@
 
 #include <range/v3/all.hpp>
 #include <mff/graphics/math.h>
+#include "./renderer/renderer.h"
+#include "./third_party/earcut.hpp"
+
+namespace mapbox::util {
+
+template <>
+struct nth<0, ::mff::Vector2f> {
+    inline static auto get(const ::mff::Vector2f& t) {
+        return t[0];
+    };
+};
+template <>
+struct nth<1, ::mff::Vector2f> {
+    inline static auto get(const ::mff::Vector2f& t) {
+        return t[1];
+    };
+};
+
+}
 
 namespace canvas {
 
@@ -47,7 +66,7 @@ enum class SegmentKind {
 };
 
 struct FlattenOptions {
-    std::size_t steps = 10;
+    std::size_t steps = 15;
 };
 
 /**
@@ -250,8 +269,8 @@ struct Contour {
         bool equal(ranges::default_sentinel_t) const {
             bool include_close_segment = contour_->closed && !ignore_close_segment_;
 
-            if (!include_close_segment) return index_ == (contour_->size() + 1);
-            return index_ == (contour_->size() + 2);
+            if (!include_close_segment) return index_ >= (contour_->size() + 1);
+            return index_ >= (contour_->size() + 2);
         }
 
         void next() {
@@ -430,7 +449,31 @@ struct State {
 };
 
 class Canvas {
+public:
+    Canvas(Renderer* renderer)
+        : renderer_(renderer) {
+    }
 
+    void fill(canvas::Path2D path, mff::Vector4f color) {
+        auto cs = path.get_outline().get_contours();
+
+        for (auto contour: cs) {
+            auto flattened = contour.flatten();
+            auto indices = ::mapbox::earcut<std::uint32_t>(std::vector<std::vector<mff::Vector2f>>{flattened});
+            auto vertices = flattened | ranges::views::transform([](const auto& pos) { return Vertex{pos}; })
+                | ranges::to<std::vector>();
+
+            renderer_->draw(vertices, indices, PushConstants{1.0f, color});
+            /*renderer_->draw(
+                {Vertex{{0.0f, 0.0f}}, Vertex{{10.0f, 0.0f}}, Vertex{{10.0f, 10.0f}}, Vertex{{0.0f, 10.0f}}},
+                { 0, 2, 3},
+                PushConstants{1.0f, {1.0f, 1.0f, 1.0f, 1.0f}}
+            );*/
+        }
+    }
+
+private:
+    Renderer* renderer_;
 };
 
 }
