@@ -18,4 +18,6 @@ typedef Eigen::Matrix2f Matrix2f;
 std::array<std::uint32_t, 2> to_array(Vector2ui v);
 std::array<float, 4> to_array(Vector4f v);
 
+Matrix2f from_array(std::array<std::float_t, 4> arr);
+
 }

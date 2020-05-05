@@ -32,6 +32,10 @@ Renderer* RendererInit::get_renderer() {
     return renderer_.get();
 }
 
+mff::Vector2ui RendererInit::get_dimensions() {
+    return surface_->get_dimensions();
+}
+
 boost::leaf::result<void> RendererInit::present() {
     LEAF_AUTO(fresh, presenter_->draw());
 
@@ -39,7 +43,7 @@ boost::leaf::result<void> RendererInit::present() {
         LEAF_CHECK(presenter_->build_commands(surface_->get_color_image(), presenter_->get_dimensions()));
     }
 
-        engine_->get_device()->get_handle().waitIdle();
+    engine_->get_device()->get_handle().waitIdle();
 
     return {};
 }

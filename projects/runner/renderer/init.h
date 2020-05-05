@@ -13,6 +13,7 @@
 class RendererInit {
 public:
     Renderer* get_renderer();
+    mff::Vector2ui get_dimensions();
 
     boost::leaf::result<void> present();
 

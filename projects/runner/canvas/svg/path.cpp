@@ -7,6 +7,10 @@
 
 namespace canvas::svg {
 
+///////////////////////////////////
+/// Helpers (per specitifaiton) ///
+///////////////////////////////////
+
 bool is_path_space(char c) {
     return c == 0x20 || c == 0x9 || c == 0xA || c == 0xD || c == 0xC;
 }
@@ -26,6 +30,10 @@ template <typename Input, typename Error = mff::parser_combinator::error::Defaul
 auto ignore(Parser p) {
     return parsers::combinator::map<Input, Error, Parser>(p, [](auto i) -> Ignore { return Ignore{}; });
 }
+
+//////////////////////
+/// Spaces parsers ///
+//////////////////////
 
 auto parse_space(const input_t& input) {
     return ignore<input_t, error_t>(
@@ -62,6 +70,10 @@ auto parse_comma_separator(const input_t& input) {
 auto parse_comma_separator_optional(const input_t& input) {
     return parsers::combinator::opt<input_t, error_t>(parse_comma_separator)(input);
 }
+
+/////////////////////
+/// Parse numbers ///
+/////////////////////
 
 namespace Sign_ {
 
@@ -118,6 +130,10 @@ auto parse_number(const input_t& input) {
         }
     )(input);
 }
+
+/////////////////////////
+/// Parse coordinates ///
+/////////////////////////
 
 auto parse_coordinate_sequence(const input_t& input) {
     return parsers::many1<input_t, error_t>(
@@ -205,6 +221,9 @@ auto parse_command_letter_factory(char symbol) {
                 std::tolower(symbol))));
 }
 
+///////////////////////
+/// Command parsers ///
+///////////////////////
 
 auto parse_moveto(const input_t& input) {
     auto command = parse_command_letter_factory('M');
@@ -308,6 +327,10 @@ auto parse_smooth_curveto(const input_t& input) {
     )(input);
 }
 
+/////////////////////
+/// Final parsers ///
+/////////////////////
+
 auto parse_command(const input_t& input) {
     return parsers::alt<input_t, error_t>(
         parse_lineto,
@@ -332,7 +355,8 @@ auto parse_path_internal(const input_t& input) {
     auto parse_first_then_rest = parsers::tuple<input_t, error_t>(parse_first_moveto, parse_commands);
 
     return parsers::combinator::map<input_t, error_t>(
-        parse_first_then_rest, [](auto i) {
+        parse_first_then_rest,
+        [](auto i) {
             auto[first, rest] = i;
 
             rest.insert(rest.begin(), first);
