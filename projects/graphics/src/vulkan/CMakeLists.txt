@@ -7,12 +7,12 @@ target_sources(${PROJECT_NAME} PRIVATE
     render_pass.cpp
     swapchain.cpp
     version.cpp
-)
+    )
 
 add_subdirectory(command_buffer)
 add_subdirectory(framebuffer)
 add_subdirectory(image)
 add_subdirectory(sync)
-add_subdirectory(graphics_pipeline)
-add_subdirectory(pipeline)
+#add_subdirectory(graphics_pipeline)
+#add_subdirectory(pipeline)
 add_subdirectory(descriptor)

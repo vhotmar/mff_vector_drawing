@@ -1,5 +1,6 @@
 #include <mff/graphics/vulkan/pipeline/blend.h>
 
+#include <range/v3/all.hpp>
 #include <mff/algorithms.h>
 #include <mff/graphics/vulkan/render_pass.h>
 #include <mff/utils.h>
@@ -75,7 +76,9 @@ vk::PipelineColorBlendStateCreateInfo Blend::to_vulkan(const Subpass* pass) cons
     auto blend_attachment_infos = std::visit(
         overloaded{
             [](AttachmentsBlend::Individual i) -> ba_info {
-                return mff::map([](auto b) { return b.to_vulkan(); }, i.blends);
+                return i.blends
+                    | ranges::views::transform([](auto b) { return b.to_vulkan(); })
+                    | ranges::to<std::vector>();
             },
             [&](AttachmentsBlend::Collective c) -> ba_info {
                 return ba_info(pass->get_color_attachments_count(), c.blend.to_vulkan());
