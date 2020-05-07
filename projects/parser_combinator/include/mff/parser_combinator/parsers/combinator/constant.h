@@ -7,11 +7,14 @@
 
 namespace mff::parser_combinator::parsers::combinator {
 
-template <typename Input, typename Error = error::DefaultError <Input>, typename Value>
-auto constant(Value val) {
-    return [val](const Input& input) -> ParserResult <Input, Value, Error> {
-        return make_parser_result(input, val);
-    };
-}
+template <typename Input, typename Error = error::DefaultError <Input>>
+struct constant_fn {
+    template <typename Value>
+    auto operator()(Value val) const {
+        return [val](const Input& input) -> ParserResult <Input, Value, Error> {
+            return make_parser_result(input, val);
+        };
+    }
+};
 
 }

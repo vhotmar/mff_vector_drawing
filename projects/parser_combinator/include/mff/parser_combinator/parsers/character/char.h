@@ -13,22 +13,24 @@ template <
     typename Input,
     typename Error = error::DefaultError <Input>
 >
-auto char_p(
-    char c
-) {
-    using value_type = traits::iterator::value_type_t<Input>;
+struct char_p_fn {
+    auto operator()(
+        char c
+    ) const {
+        using value_type = traits::iterator::value_type_t<Input>;
 
-    return [c](const Input& input) -> ParserResult<Input, char, Error> {
-        auto begin = traits::iterator::begin(input);
-        auto end = traits::iterator::end(input);
+        return [c](const Input& input) -> ParserResult<Input, char, Error> {
+            auto begin = traits::iterator::begin(input);
+            auto end = traits::iterator::end(input);
 
-        if (begin == end || traits::as_char::as_char<value_type>(*begin) != c)
-            return make_parser_result_error<Input, char, Error>(input, c);
+            if (begin == end || traits::as_char::as_char<value_type>(*begin) != c)
+                return make_parser_result_error<Input, char, Error>(input, c);
 
-        char copy = c;
+            char copy = c;
 
-        return make_parser_result(traits::input::slice(input, 1, traits::iterator::length(input)), std::move(copy));
-    };
-}
+            return make_parser_result(traits::input::slice(input, 1, traits::iterator::length(input)), std::move(copy));
+        };
+    }
+};
 
 }

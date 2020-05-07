@@ -11,48 +11,46 @@ namespace mff::parser_combinator::parsers {
 
 namespace complete {
 
-template <
-    typename Input,
-    typename Error = error::DefaultError<Input>,
-    typename T
->
-auto is_a(
-    const T& arr
-) {
-    return [arr](const Input& input) -> ParserResult<Input, Input, Error> {
-        return traits::input::split_at_position1_complete<Input, Error>(
-            input,
-            [arr](auto c) {
-                return !traits::input::find_token(arr, c);
-            },
-            error::ErrorKind::IsA
-        );
-    };
-}
+template <typename Input, typename Error = error::DefaultError<Input>>
+struct is_a_fn {
+    template <typename T>
+    auto operator()(
+        const T& arr
+    ) const {
+        return [arr](const Input& input) -> ParserResult<Input, Input, Error> {
+            return traits::input::split_at_position1_complete<Input, Error>(
+                input,
+                [arr](auto c) {
+                    return !traits::input::find_token(arr, c);
+                },
+                error::ErrorKind::IsA
+            );
+        };
+    }
+};
 
 }
 
 namespace streaming {
 
-template <
-    typename Input,
-    typename Error = error::DefaultError<Input>,
-    typename T
->
-auto is_a(
-    const T& arr
-) {
-    return [arr](const Input& input) -> ParserResult<Input, Input, Error> {
+template <typename Input, typename Error = error::DefaultError<Input>>
+struct is_a_fn {
+    template <typename T>
+    auto operator()(
+        const T& arr
+    ) const {
+        return [arr](const Input& input) -> ParserResult<Input, Input, Error> {
 
-        return traits::input::split_at_position1<Input, Error>(
-            input,
-            [arr](auto c) {
-                return !traits::input::find_token(arr, c);
-            },
-            error::ErrorKind::IsA
-        );
-    };
-}
+            return traits::input::split_at_position1<Input, Error>(
+                input,
+                [arr](auto c) {
+                    return !traits::input::find_token(arr, c);
+                },
+                error::ErrorKind::IsA
+            );
+        };
+    }
+};
 
 }
 

@@ -21,14 +21,14 @@ bool is_xml_space(char c) {
 // S  ::=  (#x20 | #x9 | #xD | #xA)+
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, Input, Error> parse_space(const Input& input) {
-    return parsers::complete::take_while1<Input, Error>(
+    return parsers::complete::take_while1_fn<Input, Error>{}(
         is_xml_space
     )(input);
 }
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, Input, Error> parse_space_optional(const Input& input) {
-    return parsers::complete::take_while<Input, Error>(
+    return parsers::complete::take_while_fn<Input, Error>{}(
         is_xml_space
     )(input);
 }
@@ -62,7 +62,7 @@ bool is_name_char(char c) {
 // Name ::=  (Letter | '_' | ':') (NameChar)*
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, Input, Error> parse_name(const Input& input) {
-    auto first_char_result = parsers::complete::take<Input, Error>(1)(input);
+    auto first_char_result = parsers::complete::take_fn<Input, Error>{}(1)(input);
     if (!first_char_result) return tl::make_unexpected(first_char_result.error());
 
     auto first_char = first_char_result->output[0];
@@ -71,32 +71,34 @@ ParserResult<Input, Input, Error> parse_name(const Input& input) {
         return mff::parser_combinator::make_parser_result_error<Input, Input, Error>(input, error::ErrorKind::User);
     }
 
-    auto name_char_parser = parsers::complete::take_while<Input, Error>([](auto c) { return is_name_char(c); });
+    auto name_char_parser = parsers::complete::take_while_fn<Input, Error>{}([](auto c) { return is_name_char(c); });
 
     return name_char_parser(input);
 }
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, char, Error> parse_eq(const Input& input) {
-    return parsers::between<Input, Error>(
+    using p = parsers::Parsers<Input, Error>;
+
+    return p::between(
         parse_space_optional<Input, Error>,
-        parsers::complete::char_p<Input, Error>('=')
+        parsers::complete::char_p_fn<Input, Error>{}('=')
     )(input);
 }
 
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, Input, Error> parse_attribute_value(const Input& input) {
-    return parsers::alt<Input, Error>(
-        parsers::between<Input, Error>(
-            parsers::complete::char_p<Input, Error>('\''),
-            parsers::complete::take_while<Input, Error>(
+    return parsers::alt_fn<Input, Error>{}(
+        parsers::between_fn<Input, Error>{}(
+            parsers::complete::char_p_fn<Input, Error>{}('\''),
+            parsers::complete::take_while_fn<Input, Error>{}(
                 [](auto c) { return c != '\''; }
             )
         ),
-        parsers::between<Input, Error>(
-            parsers::complete::char_p<Input, Error>('"'),
-            parsers::complete::take_while<Input, Error>(
+        parsers::between_fn<Input, Error>{}(
+            parsers::complete::char_p_fn<Input, Error>{}('"'),
+            parsers::complete::take_while_fn<Input, Error>{}(
                 [](auto c) { return c != '"'; }
             )
         )
@@ -227,8 +229,8 @@ struct xml_element {
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, xml_attribute<Input>, Error> parse_attribute(const Input& input) {
-    auto parser = parsers::combinator::map<Input, Error>(
-        parsers::separated_pair<Input, Error>(
+    auto parser = parsers::combinator::map_fn<Input, Error>{}(
+        parsers::separated_pair_fn<Input, Error>{}(
             parse_name<Input, Error>,
             parse_eq<Input, Error>,
             parse_attribute_value<Input, Error>
@@ -243,10 +245,10 @@ template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, std::vector<xml_attribute<Input>>, Error> parse_attributes(
     const Input& input
 ) {
-    auto parser = parsers::combinator::map<Input, Error>(
-        parsers::many0<Input, Error>(
-            parsers::preceded<Input, Error>(
-                parsers::combinator::opt<Input, Error>(parse_space<Input, Error>),
+    auto parser = parsers::combinator::map_fn<Input, Error>{}(
+        parsers::many0_fn<Input, Error>{}(
+            parsers::preceded_fn<Input, Error>{}(
+                parsers::combinator::opt_fn<Input, Error>{}(parse_space<Input, Error>),
                 parse_attribute<Input, Error>
             )
         ),
@@ -259,9 +261,9 @@ ParserResult<Input, std::vector<xml_attribute<Input>>, Error> parse_attributes(
 // TagContent  ::=  Name (S Attribute)* S?
 template <typename Input, typename Error=error::DefaultError<Input>>
 auto parse_tag_content(const Input& input) {
-    return parsers::combinator::map<Input, Error>(
-        parsers::terminated<Input, Error>(
-            parsers::pair<Input, Error>(
+    return parsers::combinator::map_fn<Input, Error>{}(
+        parsers::terminated_fn<Input, Error>{}(
+            parsers::pair_fn<Input, Error>{}(
                 parse_name<Input, Error>,
                 parse_attributes<Input, Error>
             ),
@@ -274,11 +276,11 @@ auto parse_tag_content(const Input& input) {
 // EmptyElemTag  ::=  '<' TagContent '/>'
 template <typename Input, typename Error=error::DefaultError<Input>>
 auto parse_empty_element_tag(const Input& input) {
-    return parsers::combinator::map<Input, Error>(
-        parsers::delimited<Input, Error>(
-            parsers::complete::tag<Input, Error>("<"),
+    return parsers::combinator::map_fn<Input, Error>{}(
+        parsers::delimited_fn<Input, Error>{}(
+            parsers::complete::tag_fn<Input, Error>{}("<"),
             parse_tag_content<Input, Error>,
-            parsers::complete::tag<Input, Error>("/>")
+            parsers::complete::tag_fn<Input, Error>{}("/>")
         ),
         [](auto p) { return xml_empty_element<Input>{std::move(p.name), std::move(p.attributes)}; }
     )(input);
@@ -287,11 +289,11 @@ auto parse_empty_element_tag(const Input& input) {
 // STag  ::=  '<' TagContent '>'
 template <typename Input, typename Error=error::DefaultError<Input>>
 auto parse_start_element_tag(const Input& input) {
-    return parsers::combinator::map<Input, Error>(
-        parsers::delimited<Input, Error>(
-            parsers::complete::tag<Input, Error>("<"),
+    return parsers::combinator::map_fn<Input, Error>{}(
+        parsers::delimited_fn<Input, Error>{}(
+            parsers::complete::tag_fn<Input, Error>{}("<"),
             parse_tag_content<Input, Error>,
-            parsers::complete::tag<Input, Error>(">")
+            parsers::complete::tag_fn<Input, Error>{}(">")
         ),
         [](auto p) { return xml_start_tag<Input>{std::move(p.name), std::move(p.attributes)}; }
     )(input);
@@ -299,21 +301,21 @@ auto parse_start_element_tag(const Input& input) {
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 auto parse_end_element_tag(const Input& name, const Input& input) {
-    return parsers::combinator::value<Input, Error>(
+    return parsers::combinator::value_fn<Input, Error>{}(
         name,
-        parsers::tuple<Input, Error>(
-            parsers::complete::tag<Input, Error>("</"),
-            parsers::complete::tag<Input, Error>(name),
+        parsers::tuple_fn<Input, Error>{}(
+            parsers::complete::tag_fn<Input, Error>{}("</"),
+            parsers::complete::tag_fn<Input, Error>{}(name),
             parse_space_optional<Input, Error>,
-            parsers::complete::tag<Input, Error>(">")
+            parsers::complete::tag_fn<Input, Error>{}(">")
         )
     )(input);
 }
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 auto parse_char_data(const Input& input) {
-    return parsers::combinator::map<Input, Error>(
-        parsers::complete::take_while1<Input, Error>([](auto c) { return c != '<' && c != '>'; }),
+    return parsers::combinator::map_fn<Input, Error>{}(
+        parsers::complete::take_while1_fn<Input, Error>{}([](auto c) { return c != '<' && c != '>'; }),
         [](auto c) { return xml_char_data<Input>{std::move(c)}; }
     )(input);
 }
@@ -326,7 +328,7 @@ auto parse_element(const Input& input);
 
 template <typename Input, typename Error=error::DefaultError<Input>>
 ParserResult<Input, std::vector<xml_content_type<Input>>, Error> parse_contents(const Input& input) {
-    auto parse_optional_char_data = parsers::combinator::opt<Input, Error>(parse_char_data<Input, Error>);
+    auto parse_optional_char_data = parsers::combinator::opt_fn<Input, Error>{}(parse_char_data<Input, Error>);
 
     std::vector<xml_content_type<Input>> content;
 
@@ -381,12 +383,12 @@ ParserResult<Input, xml_element<Input>, Error> parse_whole_element(const Input& 
 
 template <typename Input, typename Error>
 auto parse_element(const Input& input) {
-    return parsers::alt<Input, Error>(
-        parsers::combinator::map<Input, Error>(
+    return parsers::alt_fn<Input, Error>{}(
+        parsers::combinator::map_fn<Input, Error>{}(
             parse_empty_element_tag<Input, Error>,
             [](auto p) -> xml_element_type<Input> { return std::move(p); }
         ),
-        parsers::combinator::map<Input, Error>(
+        parsers::combinator::map_fn<Input, Error>{}(
             parse_whole_element<Input, Error>,
             [](auto p) -> xml_element_type<Input> { return std::move(p); }
         )

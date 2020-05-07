@@ -9,35 +9,33 @@
 
 namespace mff::parser_combinator::parsers::complete {
 
-template <
-    typename Input,
-    typename Error = error::DefaultError<Input>
->
-auto alpha0(
-    const Input& input
-) {
-    using value_type = traits::iterator::value_type_t<Input>;
+template <typename Input, typename Error = error::DefaultError<Input>>
+struct alpha0_fn {
+    auto operator()(
+        const Input& input
+    ) const {
+        using value_type = traits::iterator::value_type_t<Input>;
 
-    return traits::input::split_at_position_complete<Input, Error>(
-        input,
-        [](value_type c) { return !traits::as_char::is_alpha(c); }
-    );
-}
+        return traits::input::split_at_position_complete<Input, Error>(
+            input,
+            [](value_type c) { return !traits::as_char::is_alpha(c); }
+        );
+    }
+};
 
-template <
-    typename Input,
-    typename Error = error::DefaultError<Input>
->
-auto alpha1(
-    const Input& input
-) {
-    using value_type = traits::iterator::value_type_t<Input>;
+template <typename Input, typename Error = error::DefaultError<Input>>
+struct alpha1_fn {
+    auto operator()(
+        const Input& input
+    ) const {
+        using value_type = traits::iterator::value_type_t<Input>;
 
-    return traits::input::split_at_position1_complete<Input, Error>(
-        input,
-        [](value_type c) { return !traits::as_char::is_alpha(c); },
-        error::ErrorKind::Alpha
-    );
-}
+        return traits::input::split_at_position1_complete<Input, Error>(
+            input,
+            [](value_type c) { return !traits::as_char::is_alpha(c); },
+            error::ErrorKind::Alpha
+        );
+    }
+};
 
 }

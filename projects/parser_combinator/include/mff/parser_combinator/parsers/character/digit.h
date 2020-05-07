@@ -13,31 +13,35 @@ template <
     typename Input,
     typename Error = error::DefaultError <Input>
 >
-auto digit0(
-    const Input& input
-) {
-    using value_type = traits::iterator::value_type_t<Input>;
+struct digit0_fn {
+    auto operator()(
+        const Input& input
+    ) const {
+        using value_type = traits::iterator::value_type_t<Input>;
 
-    return traits::input::split_at_position_complete<Input, Error>(
-        input,
-        [](value_type c) { return !traits::as_char::is_dec_digit(c); }
-    );
-}
+        return traits::input::split_at_position_complete<Input, Error>(
+            input,
+            [](value_type c) { return !traits::as_char::is_dec_digit(c); }
+        );
+    }
+};
 
 template <
     typename Input,
     typename Error = error::DefaultError <Input>
 >
-auto digit1(
-    const Input& input
-) {
-    using value_type = traits::iterator::value_type_t<Input>;
+struct digit1_fn {
+    auto operator()(
+        const Input& input
+    ) const {
+        using value_type = traits::iterator::value_type_t<Input>;
 
-    return traits::input::split_at_position1_complete<Input, Error>(
-        input,
-        [](value_type c) { return !traits::as_char::is_dec_digit(c); },
-        error::ErrorKind::Digit
-    );
-}
+        return traits::input::split_at_position1_complete<Input, Error>(
+            input,
+            [](value_type c) { return !traits::as_char::is_dec_digit(c); },
+            error::ErrorKind::Digit
+        );
+    }
+};
 
 }

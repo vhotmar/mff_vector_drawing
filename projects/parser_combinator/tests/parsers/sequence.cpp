@@ -12,10 +12,10 @@ namespace error = mff::parser_combinator::error;
 
 SCENARIO("there exists a delimited parser") {
     GIVEN("A delimited parser of string \"abc|efg\" (where \"abc\" and \"efg\" are left and right parens)") {
-        auto parser = parsers::delimited<std::string>(
-            parsers::complete::tag("abc"s),
-            parsers::complete::tag("|"s),
-            parsers::complete::tag("efg"s)
+        auto parser = parsers::delimited_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("abc"s),
+            parsers::complete::tag_fn<std::string>{}("|"s),
+            parsers::complete::tag_fn<std::string>{}("efg"s)
         );
 
         WHEN("we try to parse \"abc|efg\"") {
@@ -61,9 +61,9 @@ SCENARIO("there exists a delimited parser") {
 
 SCENARIO("there exists a preceded parser") {
     GIVEN("A preceded parser of string \"abc\" and \"efg\"") {
-        auto parser = parsers::preceded<std::string>(
-            parsers::complete::tag("abc"s),
-            parsers::complete::tag("efg"s)
+        auto parser = parsers::preceded_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("abc"s),
+            parsers::complete::tag_fn<std::string>{}("efg"s)
         );
 
         WHEN("we try to parse \"abcefg\"") {
@@ -109,9 +109,9 @@ SCENARIO("there exists a preceded parser") {
 
 SCENARIO("there exists a pair parser") {
     GIVEN("Pair parser of string \"abc\" and \"def\"") {
-        auto parser = parsers::pair<std::string>(
-            parsers::complete::tag("abc"s),
-            parsers::complete::tag("def"s)
+        auto parser = parsers::pair_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("abc"s),
+            parsers::complete::tag_fn<std::string>{}("def"s)
         );
 
         WHEN("we try to parse \"abcdef\"") {
@@ -138,10 +138,10 @@ SCENARIO("there exists a pair parser") {
 
 SCENARIO("there exists a separated_pair parser") {
     GIVEN("A separated_pair parser of string \"abc|efg\" (where \"abc\" and \"efg\" are left and right parens)") {
-        auto parser = parsers::separated_pair<std::string>(
-            parsers::complete::tag("abc"s),
-            parsers::complete::tag("|"s),
-            parsers::complete::tag("efg"s)
+        auto parser = parsers::separated_pair_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("abc"s),
+            parsers::complete::tag_fn<std::string>{}("|"s),
+            parsers::complete::tag_fn<std::string>{}("efg"s)
         );
 
         WHEN("we try to parse \"abc|efg\"") {

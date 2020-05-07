@@ -57,9 +57,12 @@ auto tuple_impl(Parser parser, Others... others) {
 /**
  * tries list of parsers one by one until one succeeds
  */
-template <typename Input, typename Error = error::DefaultError <Input>, typename... Parsers>
-auto tuple(Parsers... parsers) {
-    return detail::tuple_impl<Input, Error, Parsers...>(parsers...);
-}
+template <typename Input, typename Error = error::DefaultError <Input>>
+struct tuple_fn {
+    template <typename... Parsers>
+    auto operator()(Parsers... parsers) const {
+        return detail::tuple_impl<Input, Error, Parsers...>(parsers...);
+    }
+};
 
 }

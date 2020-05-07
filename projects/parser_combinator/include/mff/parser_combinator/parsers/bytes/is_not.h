@@ -13,23 +13,25 @@ namespace complete {
 
 template <
     typename Input,
-    typename Error = error::DefaultError <Input>,
-    typename T
+    typename Error = error::DefaultError <Input>
 >
-auto is_not(
-    const T& arr
-) {
-    return [arr](const Input& input) -> ParserResult <Input, Input, Error> {
+struct is_not_fn {
+    template <typename T>
+    auto operator()(
+        const T& arr
+    ) const {
+        return [arr](const Input& input) -> ParserResult <Input, Input, Error> {
 
-        return traits::input::split_at_position1_complete<Input, Error>(
-            input,
-            [arr](auto c) {
-                return traits::input::find_token(arr, c);
-            },
-            error::ErrorKind::IsA
-        );
-    };
-}
+            return traits::input::split_at_position1_complete<Input, Error>(
+                input,
+                [arr](auto c) {
+                    return traits::input::find_token(arr, c);
+                },
+                error::ErrorKind::IsA
+            );
+        };
+    }
+};
 
 }
 

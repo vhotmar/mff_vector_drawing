@@ -13,8 +13,8 @@ namespace error = mff::parser_combinator::error;
 
 SCENARIO("there exists a many parser") {
     GIVEN("a many parser of \"abc\"") {
-        auto parser = parsers::many0<std::string>(
-            parsers::complete::tag("abc"s)
+        auto parser = parsers::many0_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("abc"s)
         );
 
         WHEN("we try to parse \"abcabc\"") {
@@ -54,9 +54,9 @@ SCENARIO("there exists a many parser") {
 
 SCENARIO("there exists a separated_list parser") {
     GIVEN("A separated list parser of string \"abc\" separated by \"|\"") {
-        auto parser = parsers::separated_list<std::string>(
-            parsers::complete::tag("|"s),
-            parsers::complete::tag("abc"s)
+        auto parser = parsers::separated_list_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("|"s),
+            parsers::complete::tag_fn<std::string>{}("abc"s)
         );
 
         WHEN("we try to parse \"abc|abc|abc\"") {
@@ -106,9 +106,9 @@ SCENARIO("there exists a separated_list parser") {
     }
 
     GIVEN("a separated nonempty list parser of string \"abc\" separated by \"|\"") {
-        auto parser = parsers::separated_nonempty_list<std::string>(
-            parsers::complete::tag("|"s),
-            parsers::complete::tag("abc"s)
+        auto parser = parsers::separated_nonempty_list_fn<std::string>{}(
+            parsers::complete::tag_fn<std::string>{}("|"s),
+            parsers::complete::tag_fn<std::string>{}("abc"s)
         );
 
         WHEN("we try to parse \"abc|abc|abc\"") {
@@ -168,10 +168,10 @@ SCENARIO("there exists a separated_list parser") {
 
 SCENARIO("there exists a tuple parser") {
     GIVEN("a tuple parser of (alpha1, digit1, alpha1)") {
-        auto parser = parsers::tuple<std::string>(
-            parsers::complete::alpha1<std::string>,
-            parsers::complete::digit1<std::string>,
-            parsers::complete::alpha1<std::string>
+        auto parser = parsers::tuple_fn<std::string>{}(
+            parsers::complete::alpha1_fn<std::string>{},
+            parsers::complete::digit1_fn<std::string>{},
+            parsers::complete::alpha1_fn<std::string>{}
         );
 
         using parser_result_t = mff::parser_combinator::utils::parser_output_t<decltype(parser), std::string>;

@@ -15,6 +15,7 @@ enum class ErrorKind {
     TakeWhile1,
     TakeWhileMN,
     Eof,
+    Verify,
 
     User,
 };

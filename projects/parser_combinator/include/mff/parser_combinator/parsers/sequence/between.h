@@ -6,16 +6,14 @@
 
 namespace mff::parser_combinator::parsers {
 
-template <
-    typename Input,
-    typename Error = error::DefaultError <Input>,
-    typename Parser,
-    typename SeparatorParser
->
-auto between(Parser parser, SeparatorParser sep) {
-    using Output = utils::parser_output_t<SeparatorParser, Input>;
+template <typename Input, typename Error = error::DefaultError <Input>>
+struct between_fn {
+    template <typename Parser, typename SeparatorParser>
+    auto operator()(Parser parser, SeparatorParser sep) const {
+        using Output = utils::parser_output_t<SeparatorParser, Input>;
 
-    return delimited<Input, Error>(parser, sep, parser);
-}
+        return delimited_fn < Input, Error > {}(parser, sep, parser);
+    }
+};
 
 }

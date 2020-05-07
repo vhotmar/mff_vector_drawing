@@ -63,32 +63,35 @@ auto alt_implementation(Parser parser, Others... others) {
 /**
  * tries list of parsers one by one until one succeeds
  */
-template <typename Input, typename Error = error::DefaultError<Input>, typename... Others>
-auto alt(Others... others) {
-    auto base = detail::alt_implementation<Input, Error, Others...>(others...);
+template <typename Input, typename Error = error::DefaultError<Input>>
+struct alt_fn {
+    template <typename... Others>
+    auto operator()(Others... others) const {
+        auto base = detail::alt_implementation<Input, Error, Others...>(others...);
 
-    using Output = utils::parser_output_t<decltype(base), Input>;
+        using Output = utils::parser_output_t<decltype(base), Input>;
 
-    return [base](const Input& input) -> ParserResult<Input, Output, Error> {
-        auto result = base(input);
+        return [base](const Input& input) -> ParserResult<Input, Output, Error> {
+            auto result = base(input);
 
-        if (!result) {
-            auto error = result.error();
+            if (!result) {
+                auto error = result.error();
 
-            // if the parsers failed with recoverable error, then append alt error
-            if (error.is_error()) {
-                return tl::make_unexpected(
-                    error::ParserError<Error>(
-                        error::types::Err(
-                            error::append_error(
-                                input,
-                                error::ErrorKind::Alt,
-                                *error.error()))));
+                // if the parsers failed with recoverable error, then append alt error
+                if (error.is_error()) {
+                    return tl::make_unexpected(
+                        error::ParserError<Error>(
+                            error::types::Err(
+                                error::append_error(
+                                    input,
+                                    error::ErrorKind::Alt,
+                                    *error.error()))));
+                }
             }
-        }
 
-        return std::move(result);
-    };
-}
+            return std::move(result);
+        };
+    }
+};
 
 }

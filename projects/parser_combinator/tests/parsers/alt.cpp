@@ -11,9 +11,9 @@ namespace error = mff::parser_combinator::error;
 
 SCENARIO("there exists an alt parser") {
     GIVEN("alt parser should parse alphanumeric characters or digits") {
-        auto parser = parsers::alt<std::string>(
-            parsers::complete::alpha1<std::string>,
-            parsers::complete::digit1<std::string>
+        auto parser = parsers::alt_fn<std::string>{}(
+            parsers::complete::alpha1_fn<std::string>{},
+            parsers::complete::digit1_fn<std::string>{}
         );
 
         WHEN("we try to parse \"abc\"") {

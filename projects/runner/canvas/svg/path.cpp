@@ -19,320 +19,197 @@ bool is_path_digit(char c) {
     return isdigit(c);
 }
 
-using input_t = std::string_view;
-using error_t = mff::parser_combinator::error::DefaultError<input_t>;
-
-namespace parsers = mff::parser_combinator::parsers;
-
-struct Ignore {};
-
-template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>, typename Parser>
-auto ignore(Parser p) {
-    return parsers::combinator::map<Input, Error, Parser>(p, [](auto i) -> Ignore { return Ignore{}; });
-}
-
-//////////////////////
-/// Spaces parsers ///
-//////////////////////
-
-auto parse_space(const input_t& input) {
-    return ignore<input_t, error_t>(
-        parsers::complete::take_while1<input_t, error_t>(
-            is_path_space
-        ))(input);
-}
-
-auto parse_space_optional(const input_t& input) {
-    return ignore<input_t, error_t>(
-        parsers::complete::take_while<input_t, error_t>(
-            is_path_space
-        ))(input);
-}
-
-auto parse_comma_separator(const input_t& input) {
-    auto symbol = parsers::complete::tag<input_t, error_t>(input_t(","));
-
-    return parsers::alt<input_t, error_t>(
-        ignore<input_t, error_t>(
-            parsers::tuple<input_t, error_t>(
-                ignore<input_t, error_t>(parse_space),
-                ignore<input_t, error_t>(parsers::combinator::opt<input_t, error_t>(symbol)),
-                ignore<input_t, error_t>(parse_space_optional)
-            )),
-        ignore<input_t, error_t>(
-            parsers::tuple<input_t, error_t>(
-                ignore<input_t, error_t>(symbol),
-                ignore<input_t, error_t>(parse_space_optional))
-        )
-    )(input);
-}
-
-auto parse_comma_separator_optional(const input_t& input) {
-    return parsers::combinator::opt<input_t, error_t>(parse_comma_separator)(input);
-}
+template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
+using Parser = mff::parser_combinator::parsers::Parsers<Input>;
 
 /////////////////////
 /// Parse numbers ///
 /////////////////////
 
-namespace Sign_ {
+template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
+struct recognize_float {
+    auto operator()(const Input& input) const {
+        using parsers = Parser<Input, Error>;
 
-struct Positive {};
-struct Negative {};
+        return parsers::recognize(
+            parsers::tuple(
+                // there is optional sign
+                parsers::opt(parsers::alt(parsers::complete::char_p('+'), parsers::complete::char_p('-'))),
+                // then there are two options
+                parsers::alt(
+                    // either the number starts with number and follows with optional decimal part
+                    parsers::ignore(
+                        parsers::tuple(
+                            parsers::complete::digit1,
+                            parsers::opt(
+                                parsers::pair(
+                                    parsers::complete::char_p('.'),
+                                    parsers::opt(parsers::complete::digit1))))),
+                    // or we get dot followed by digits (.001)
+                    parsers::ignore(
+                        parsers::tuple(
+                            parsers::complete::char_p('.'),
+                            parsers::complete::digit1
+                        )
+                    )
+                )
+            )
+        )(input);
+    }
+};
 
-}
+template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
+struct parse_float {
+    auto operator()(const Input& input) const {
+        using parsers = Parser<Input, Error>;
 
-using Sign = std::variant<Sign_::Negative, Sign_::Positive>;
-
-auto parse_sign(const input_t& input) {
-    return parsers::alt<input_t, error_t>(
-        parsers::combinator::map<input_t, error_t>(
-            parsers::complete::char_p<input_t, error_t>('+'),
-            [](auto i) -> Sign { return Sign_::Positive{}; }
-        ),
-        parsers::combinator::map<input_t, error_t>(
-            parsers::complete::char_p<input_t, error_t>('-'),
-            [](auto i) -> Sign { return Sign_::Negative{}; }
-        )
-    )(input);
-}
-
-auto parse_number(const input_t& input) {
-    auto sign = parsers::combinator::opt<input_t, error_t>(parse_sign);
-    auto numbers = parsers::complete::digit1<input_t, error_t>;
-    auto dot = parsers::complete::char_p<input_t, error_t>('.');
-    auto decimal = parsers::preceded<input_t, error_t>(dot, numbers);
-
-    return parsers::combinator::map<input_t, error_t>(
-        parsers::tuple<input_t, error_t>(
-            sign,
-            numbers,
-            parsers::combinator::opt<input_t, error_t>(decimal)
-        ),
-        [](auto r) -> std::float_t {
-            auto[sign, numbers, decimals] = r;
-
-            auto coef = std::visit(
-                mff::overloaded{
-                    [](Sign_::Positive i) { return 1.0f; },
-                    [](Sign_::Negative i) { return -1.0f; }
-                },
-                sign.value_or(Sign_::Positive{})
-            );
-
-            std::float_t dec = 0.0f;
-
-            if (decimals) {
-                dec = std::stof("0." + std::string(decimals.value()));
+        return parsers::map(
+            recognize_float<Input, Error>{},
+            [](const auto& number) {
+                return std::stof(std::string(number));
             }
-
-            return (std::stof(std::string(numbers)) + dec) * coef;
-        }
-    )(input);
-}
+        )(input);
+    }
+};
 
 /////////////////////////
 /// Parse coordinates ///
 /////////////////////////
 
-auto parse_coordinate_sequence(const input_t& input) {
-    return parsers::many1<input_t, error_t>(
-        parsers::preceded<input_t, error_t>(
-            parse_comma_separator,
-            parse_number
-        )
-    )(input);
-}
 
-auto parse_coordinate_pair(const input_t& input) {
-    auto parse_pair = parsers::pair<input_t, error_t>(
-        parse_number,
-        parsers::preceded<input_t, error_t>(
-            parse_comma_separator_optional,
-            parse_number
-        ));
-
-    return parsers::combinator::map<input_t, error_t>(
-        parse_pair,
-        [](auto i) -> mff::Vector2f { return {i.first, i.second}; }
-    )(input);
-}
-
-auto parse_coordinate_pair_sequence(const input_t& input) {
-    return parsers::many1<input_t, error_t>(
-        parsers::preceded<input_t, error_t>(
-            parse_comma_separator_optional,
-            parse_coordinate_pair
-        )
-    )(input);
-}
-
-auto parse_coordinate_pair_double(const input_t& input) {
-    auto parse_triplet = parsers::tuple<input_t, error_t>(
-        parse_coordinate_pair,
-        parsers::preceded<input_t, error_t>(parse_comma_separator_optional, parse_coordinate_pair)
-    );
-
-    return parse_triplet(input);
-}
-
-auto parse_coordinate_pair_double_sequence(const input_t& input) {
-    return parsers::many1<input_t, error_t>(
-        parsers::preceded<input_t, error_t>(
-            parse_comma_separator_optional,
-            parse_coordinate_pair_double
-        )
-    )(input);
-}
-
-auto parse_coordinate_pair_triplet(const input_t& input) {
-    auto parse_preceded_pair = parsers::preceded<input_t, error_t>(
-        parse_comma_separator_optional,
-        parse_coordinate_pair
-    );
-    auto parse_triplet = parsers::tuple<input_t, error_t>(
-        parse_coordinate_pair,
-        parse_preceded_pair,
-        parse_preceded_pair
-    );
-
-    return parse_triplet(input);
-}
-
-
-auto parse_coordinate_pair_triplet_sequence(const input_t& input) {
-    return parsers::many1<input_t, error_t>(
-        parsers::preceded<input_t, error_t>(
-            parse_comma_separator_optional,
-            parse_coordinate_pair_triplet
-        )
-    )(input);
-}
-
-
-auto parse_command_letter_factory(char symbol) {
-    return parsers::alt<input_t, error_t>(
-        parsers::combinator::value<input_t, error_t>(
-            Position::Absolute,
-            parsers::complete::char_p<input_t, error_t>(std::toupper(symbol))),
-        parsers::combinator::value<input_t, error_t>(
-            Position::Relative,
-            parsers::complete::char_p<input_t, error_t>(
-                std::tolower(symbol))));
-}
 
 ///////////////////////
 /// Command parsers ///
 ///////////////////////
 
-auto parse_moveto(const input_t& input) {
-    auto command = parse_command_letter_factory('M');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_pair_sequence
+template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
+auto parse_path_internal(const Input& input) {
+    using parsers = Parser<Input>;
+
+    // at least one space
+    auto parse_space = parsers::ignore(parsers::complete::take_while1(is_path_space));
+    auto parse_space_optional = parsers::ignore(parsers::complete::take_while(is_path_space));
+    auto parse_comma_symbol = parsers::ignore(parsers::complete::char_p(','));
+
+    // space or comma with some space
+    auto parse_comma_separator = parsers::tuple(
+        parsers::alt(
+            // required space and optional comma
+            parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
+            // required comma
+            parse_comma_symbol
+        ),
+        // optional following space
+        parse_space_optional
+    );
+    auto parse_comma_separator_optional = parsers::ignore(parsers::opt(parse_comma_separator));
+
+    // factory which indicates that specified parser should be preceded by comma or space
+    auto preceded_with_comma = [&](const auto& parser) {
+        return parsers::preceded(parse_comma_separator_optional, parser);
+    };
+
+    // number parser
+    auto parse_number = parse_float<Input>{};
+    auto parse_number_sequence = parsers::many1(preceded_with_comma(parse_number));
+
+    // two numbers with separators between them
+    auto parse_coordinate = parsers::map(
+        parsers::pair(parse_number, preceded_with_comma(parse_number)),
+        [](auto i) -> mff::Vector2f { return {i.first, i.second}; }
+    );
+    auto parse_coordinate_sequence = parsers::many1(preceded_with_comma(parse_coordinate));
+
+    // two coordinates with separators between them
+    auto parse_coordinate_double = parsers::tuple(
+        parse_coordinate,
+        preceded_with_comma(parse_coordinate));
+    auto parse_coordinate_double_sequence = parsers::many1(preceded_with_comma(parse_coordinate_double));
+
+    // three coordinates with spaces between them
+    auto parse_coordinate_triplet = parsers::tuple(
+        parse_coordinate,
+        preceded_with_comma(parse_coordinate),
+        preceded_with_comma(parse_coordinate)
+    );
+    auto parse_coordinate_triplet_sequence = parsers::many1(preceded_with_comma(parse_coordinate_triplet));
+
+    // Create parser which will parse the specified symbol - if it is upper case we should use
+    // absolute positioning and if it is lower case we should use relative positioning
+    auto command_position_parser = [&](char symbol) {
+        return parsers::alt(
+            parsers::value(Position::Absolute, parsers::complete::char_p(std::toupper(symbol))),
+            parsers::value(Position::Relative, parsers::complete::char_p(std::tolower(symbol)))
+        );
+    };
+
+    // Create parser which will start with symbol (which indicates positioning) followed by
+    auto command_with_sequence_parser = [&](char symbol, const auto& sequence_parser) {
+        return parsers::map(
+            parsers::tuple(
+                command_position_parser(symbol),
+                parse_comma_separator_optional,
+                sequence_parser
+            ),
+            [](const auto& i) {
+                return std::make_tuple(std::get<0>(i), std::get<2>(i));
+            }
+        );
+    };
+
+    // Parse moveto command "M" followed by coordinates
+    auto parse_moveto = parsers::map(
+        command_with_sequence_parser('M', parse_coordinate_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::Moveto{std::get<0>(i), std::get<1>(i)};
+        }
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::Moveto{pos, coordinates};
+    // Parse closepath command "Z"
+    auto parse_closepath = parsers::value(Command{Commands_::Closepath{}}, command_position_parser('Z'));
+
+    // Parse lineto command "L" followed by coordinates
+    auto parse_lineto = parsers::map(
+        command_with_sequence_parser('L', parse_coordinate_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::Lineto{std::get<0>(i), std::get<1>(i)};
         }
-    )(input);
-}
-
-auto parse_closepath(const input_t& input) {
-    auto command = parse_command_letter_factory('Z');
-
-    return parsers::combinator::value<input_t, error_t>(Command{Commands_::Closepath{}}, command)(input);
-}
-
-auto parse_lineto(const input_t& input) {
-    auto command = parse_command_letter_factory('L');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_pair_sequence
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::Lineto{pos, coordinates};
+    // Parse horizontal lineto command "H" followed by numbers
+    auto parse_horizontal_lineto = parsers::map(
+        command_with_sequence_parser('H', parse_number_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::HorizontalLineto{std::get<0>(i), std::get<1>(i)};
         }
-    )(input);
-}
-
-auto parse_horizontal_lineto(const input_t& input) {
-    auto command = parse_command_letter_factory('H');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_sequence
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::HorizontalLineto{pos, coordinates};
+    // Parse vertical lineto command "v" followed by numbers
+    auto parse_vertical_lineto = parsers::map(
+        command_with_sequence_parser('V', parse_number_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::VerticalLineto{std::get<0>(i), std::get<1>(i)};
         }
-    )(input);
-}
-
-auto parse_vertical_lineto(const input_t& input) {
-    auto command = parse_command_letter_factory('V');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_sequence
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::VerticalLineto{pos, coordinates};
+    // Parse curveto command "C" followed by coordinates triplets (C1 C2 P)
+    auto parse_curveto = parsers::map(
+        command_with_sequence_parser('C', parse_coordinate_triplet_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::Curveto{std::get<0>(i), std::get<1>(i)};
         }
-    )(input);
-}
-
-auto parse_curveto(const input_t& input) {
-    auto command = parse_command_letter_factory('C');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_pair_triplet_sequence
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::Curveto{pos, coordinates};
+    // Parse smooth curveto command "C" followed by coordinates doubles (C1 P)
+    auto parse_smooth_curveto = parsers::map(
+        command_with_sequence_parser('S', parse_coordinate_double_sequence),
+        [](const auto& i) -> Command {
+            return Commands_::SmoothCurveto{std::get<0>(i), std::get<1>(i)};
         }
-    )(input);
-}
-
-auto parse_smooth_curveto(const input_t& input) {
-    auto command = parse_command_letter_factory('S');
-    auto parser = parsers::tuple<input_t, error_t>(
-        command,
-        parse_comma_separator_optional,
-        parse_coordinate_pair_double_sequence
     );
 
-    return parsers::combinator::map<input_t, error_t>(
-        parser, [](auto i) -> Command {
-            auto[pos, ign, coordinates] = i;
-            return Commands_::SmoothCurveto{pos, coordinates};
-        }
-    )(input);
-}
-
-/////////////////////
-/// Final parsers ///
-/////////////////////
-
-auto parse_command(const input_t& input) {
-    return parsers::alt<input_t, error_t>(
+    // Commands parser
+    auto parse_command = parsers::alt(
         parse_lineto,
         parse_closepath,
         parse_horizontal_lineto,
@@ -340,24 +217,17 @@ auto parse_command(const input_t& input) {
         parse_curveto,
         parse_smooth_curveto,
         parse_moveto
+    );
 
-    )(input);
-}
+    auto parse_first_then_rest = parsers::tuple(
+        parsers::preceded(parse_space_optional, parse_moveto),
+        parsers::many0(parsers::preceded(parse_space_optional, parse_command))
+    );
 
-auto parse_path_internal(const input_t& input) {
-    auto parse_first_moveto = parsers::preceded<input_t, error_t>(parse_space_optional, parse_moveto);
-    auto parse_commands = parsers::many0<input_t, error_t>(
-        parsers::preceded<input_t, error_t>(
-            parse_space_optional,
-            parse_command
-        ));
-
-    auto parse_first_then_rest = parsers::tuple<input_t, error_t>(parse_first_moveto, parse_commands);
-
-    return parsers::combinator::map<input_t, error_t>(
+    return parsers::map(
         parse_first_then_rest,
         [](auto i) {
-            auto[first, rest] = i;
+            auto[first, rest] = std::move(i);
 
             rest.insert(rest.begin(), first);
 
@@ -366,8 +236,9 @@ auto parse_path_internal(const input_t& input) {
     )(input);
 }
 
+//template <typename Input, typename Error=mff::parser_combinator::error::DefaultError<Input>>
 boost::leaf::result<std::vector<Command>> parse_path(const std::string& input) {
-    auto result = parse_path_internal(input);
+    auto result = parse_path_internal<std::string_view>(input);
 
     if (!result) return LEAF_NEW_ERROR();
 
