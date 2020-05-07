@@ -18,7 +18,7 @@ boost::leaf::result<void> run() {
     mff::logger::window = mff::logger::setup_window_logging();
     mff::window::EventLoop event_loop;
 
-    auto tiger_svg = mff::read_file("./Ghostscript_Tiger.svg");
+    auto tiger_svg = mff::read_file("./easypeasy.svg");
     std::string tiger_svg_string(tiger_svg.begin(), tiger_svg.end());
 
     auto tiger_svg_paths = canvas::svg::to_paths(tiger_svg_string);
