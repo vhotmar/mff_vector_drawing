@@ -97,12 +97,12 @@ boost::leaf::result<void> run(const std::string& file_name) {
             path.line_to({200, 100});
             path.line_to({200, 200});
 
-            canvas.fill(path, canvas::Canvas::FillInfo{{1.0f, 0.0f, 0.0f, 1.0f}, base_transform});
+            //canvas.fill(path, canvas::Canvas::FillInfo{{1.0f, 0.0f, 0.0f, 1.0f}, base_transform});
 
         } else {
 
             for (const auto& path: prerendered_paths) {
-                //canvas.drawPrerendered(path);
+                canvas.drawPrerendered(path);
             }
         }
 

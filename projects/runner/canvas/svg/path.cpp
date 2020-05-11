@@ -71,10 +71,10 @@ struct parse_float {
 };
 
 
-    template <typename Output>
-    using parser_fn = std::function<mff::parser_combinator::ParserResult<std::string_view, Output>(const std::string_view&)>;
+template <typename Output>
+using parser_fn = std::function<mff::parser_combinator::ParserResult<std::string_view, Output>(const std::string_view&)>;
 
-    using ignore_parser_fn = parser_fn<mff::parser_combinator::parsers::combinator::Ignore>;
+using ignore_parser_fn = parser_fn<mff::parser_combinator::parsers::combinator::Ignore>;
 ///////////////////////
 /// Command parsers ///
 ///////////////////////
@@ -86,16 +86,17 @@ auto parse_coordinates_internal(const std::string_view& input) {
     ignore_parser_fn parse_comma_symbol = parsers::ignore(parsers::complete::char_p(','));
 
     // space or comma with some space
-    ignore_parser_fn parse_comma_separator = parsers::ignore(parsers::tuple(
-        parsers::alt(
-            // required space and optional comma
-            parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
-            // required comma
-            parse_comma_symbol
-        ),
-        // optional following space
-        parse_space_optional
-    ));
+    ignore_parser_fn parse_comma_separator = parsers::ignore(
+        parsers::tuple(
+            parsers::alt(
+                // required space and optional comma
+                parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
+                // required comma
+                parse_comma_symbol
+            ),
+            // optional following space
+            parse_space_optional
+        ));
     ignore_parser_fn parse_comma_separator_optional = parsers::ignore(parsers::opt(parse_comma_separator));
 
     // factory which indicates that specified parser should be preceded by comma or space
@@ -111,7 +112,10 @@ auto parse_coordinates_internal(const std::string_view& input) {
         parsers::pair(parse_number, preceded_with_comma(parse_number)),
         [](auto i) -> mff::Vector2f { return {i.first, i.second}; }
     );
-    parser_fn<std::vector<mff::Vector2f>> parse_coordinate_sequence = parsers::many1(preceded_with_comma(parse_coordinate));
+    parser_fn<std::vector<mff::Vector2f>> parse_coordinate_sequence = parsers::many1(
+        preceded_with_comma(
+            parse_coordinate
+        ));
 
     return parse_coordinate_sequence(input);
 }
@@ -134,16 +138,17 @@ auto parse_path_internal(const std::string_view& input) {
     ignore_parser_fn parse_comma_symbol = parsers::ignore(parsers::complete::char_p(','));
 
     // space or comma with some space
-    ignore_parser_fn parse_comma_separator = parsers::ignore(parsers::tuple(
-        parsers::alt(
-            // required space and optional comma
-            parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
-            // required comma
-            parse_comma_symbol
-        ),
-        // optional following space
-        parse_space_optional
-    ));
+    ignore_parser_fn parse_comma_separator = parsers::ignore(
+        parsers::tuple(
+            parsers::alt(
+                // required space and optional comma
+                parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
+                // required comma
+                parse_comma_symbol
+            ),
+            // optional following space
+            parse_space_optional
+        ));
     ignore_parser_fn parse_comma_separator_optional = parsers::ignore(parsers::opt(parse_comma_separator));
 
     // factory which indicates that specified parser should be preceded by comma or space
@@ -160,13 +165,17 @@ auto parse_path_internal(const std::string_view& input) {
         parsers::pair(parse_number, preceded_with_comma(parse_number)),
         [](auto i) -> mff::Vector2f { return {i.first, i.second}; }
     );
-    parser_fn<std::vector<mff::Vector2f>> parse_coordinate_sequence = parsers::many1(preceded_with_comma(parse_coordinate));
+    parser_fn<std::vector<mff::Vector2f>> parse_coordinate_sequence = parsers::many1(
+        preceded_with_comma(
+            parse_coordinate
+        ));
 
     // two coordinates with separators between them
     parser_fn<std::tuple<mff::Vector2f, mff::Vector2f>> parse_coordinate_double = parsers::tuple(
         parse_coordinate,
         preceded_with_comma(parse_coordinate));
-    parser_fn<std::vector<std::tuple<mff::Vector2f, mff::Vector2f>>> parse_coordinate_double_sequence = parsers::many1(preceded_with_comma(parse_coordinate_double));
+    parser_fn<std::vector<std::tuple<mff::Vector2f, mff::Vector2f>>> parse_coordinate_double_sequence = parsers::many1(
+        preceded_with_comma(parse_coordinate_double));
 
     // three coordinates with spaces between them
     parser_fn<std::tuple<mff::Vector2f, mff::Vector2f, mff::Vector2f>> parse_coordinate_triplet = parsers::tuple(
@@ -174,7 +183,8 @@ auto parse_path_internal(const std::string_view& input) {
         preceded_with_comma(parse_coordinate),
         preceded_with_comma(parse_coordinate)
     );
-    parser_fn<std::vector<std::tuple<mff::Vector2f, mff::Vector2f, mff::Vector2f>>> parse_coordinate_triplet_sequence = parsers::many1(preceded_with_comma(parse_coordinate_triplet));
+    parser_fn<std::vector<std::tuple<mff::Vector2f, mff::Vector2f, mff::Vector2f>>> parse_coordinate_triplet_sequence = parsers::many1(
+        preceded_with_comma(parse_coordinate_triplet));
 
     // Create parser which will parse the specified symbol - if it is upper case we should use
     // absolute positioning and if it is lower case we should use relative positioning
