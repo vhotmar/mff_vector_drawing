@@ -1,5 +1,7 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <variant>
 
 #include <mff/graphics/utils.h>
@@ -102,11 +104,7 @@ struct Segment {
     static Segment cubic(const LineSegment2f& line, const LineSegment2f& ctrl);
     static Segment arc(std::float_t phi);
 
-    static Segment quarter_circle_arc() {
-        auto base = arc(M_PI_2);
-
-        return base;
-    }
+    static Segment quarter_circle_arc();
 };
 
 }

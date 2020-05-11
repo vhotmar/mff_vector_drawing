@@ -359,6 +359,12 @@ Segment Segment::arc(std::float_t phi) {
     return Segment::cubic({s, e}, {c1, c2});
 }
 
+Segment Segment::quarter_circle_arc() {
+    auto base = arc(M_PI_2);
+
+    return base;
+}
+
 Segment Segment::reversed() const {
     return std::visit(
         mff::overloaded{

@@ -17,14 +17,14 @@ void Window::dispatch(events::Event event) {
 boost::leaf::result<vk::UniqueSurfaceKHR> Window::create_surface(vk::Instance instance) {
     VkSurfaceKHR surface;
 
-    auto result = glfwCreateWindowSurface(instance, handle_.get(), nullptr, &surface);
+    auto result = glfwCreateWindowSurface((VkInstance) instance, handle_.get(), nullptr, &surface);
 
     if (result != VK_SUCCESS) {
         return boost::leaf::new_error(static_cast<vk::Result>(result));
     }
 
     vk::ObjectDestroy<vk::Instance, VULKAN_HPP_DEFAULT_DISPATCHER_TYPE> _deleter(instance);
-    return vk::UniqueSurfaceKHR(surface, _deleter);
+    return vk::UniqueSurfaceKHR(vk::SurfaceKHR(surface), _deleter);
 }
 
 std::vector<std::string> Window::get_required_extensions() {

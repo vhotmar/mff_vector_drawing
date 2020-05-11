@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <mff/graphics/utils.h>
 
 namespace canvas {

@@ -14,7 +14,7 @@ vk::Buffer Buffer::get_buffer() const {
 }
 
 Buffer::~Buffer() {
-    vmaDestroyBuffer(allocator_->get_handle(), buffer_, allocation_);
+    vmaDestroyBuffer(allocator_->get_handle(), (VkBuffer) buffer_, allocation_);
 }
 
 vk::Image Image::get_image() const {
@@ -22,7 +22,7 @@ vk::Image Image::get_image() const {
 }
 
 Image::~Image() {
-    vmaDestroyImage(allocator_->get_handle(), image_, allocation_);
+    vmaDestroyImage(allocator_->get_handle(), (VkImage) image_, allocation_);
 }
 
 Allocator::~Allocator() {
@@ -33,12 +33,11 @@ boost::leaf::result<UniqueAllocator> Allocator::build(const mff::vulkan::Device*
     struct enable_Allocator : public Allocator {};
     std::unique_ptr<Allocator> allocator = std::make_unique<enable_Allocator>();
 
-
     VmaAllocatorCreateInfo info = {};
 
-    info.instance = device->get_physical_device()->get_instance()->get_handle();
-    info.device = device->get_handle();
-    info.physicalDevice = device->get_physical_device()->get_handle();
+    info.instance = (VkInstance) device->get_physical_device()->get_instance()->get_handle();
+    info.device = (VkDevice) device->get_handle();
+    info.physicalDevice = (VkPhysicalDevice) device->get_physical_device()->get_handle();
 
     allocator->device_ = device;
 

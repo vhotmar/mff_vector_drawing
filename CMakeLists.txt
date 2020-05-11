@@ -11,7 +11,7 @@ include(FetchContent)
 ##
 # Packages we need in CMake
 ##
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
+#find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_package(Git REQUIRED)
 
 ##

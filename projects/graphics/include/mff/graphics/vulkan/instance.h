@@ -108,9 +108,9 @@ private:
     /**
      * This is implementation specific (user of this API should not be able to create this)
      */
-    PhysicalDevice() = default;
 
 public:
+    PhysicalDevice() = default;
     /**
      * @return queue families available for this physical device
      */

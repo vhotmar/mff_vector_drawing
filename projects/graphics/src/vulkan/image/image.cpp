@@ -1,5 +1,7 @@
 #include <mff/graphics/vulkan/image/image.h>
 
+#include <mff/graphics/memory.h>
+#include <mff/graphics/vulkan/device.h>
 #include <mff/graphics/utils.h>
 #include <mff/utils.h>
 #include <mff/graphics/vulkan/format.h>
@@ -153,7 +155,7 @@ ImageDimensions UnsafeImage::get_dimensions() const {
 }
 
 std::uintptr_t UnsafeImage::get_key() const {
-    return reinterpret_cast<std::uintptr_t>((VkImage) handle_);
+    return static_cast<std::uintptr_t>((VkImage) handle_);
 }
 
 vk::ImageView UnsafeImageView::get_handle() const {

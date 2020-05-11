@@ -4,6 +4,7 @@
 #include <utility>
 
 #include <range/v3/all.hpp>
+#include <mff/graphics/memory.h>
 #include <mff/algorithms.h>
 #include <mff/graphics/utils.h>
 #include <mff/graphics/vulkan/dispatcher.h>

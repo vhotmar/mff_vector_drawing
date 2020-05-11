@@ -12,8 +12,13 @@
 
 namespace canvas::svg {
 
-template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
-using Parser = mff::parser_combinator::parsers::Parsers<Input>;
+using Parser = mff::parser_combinator::parsers::Parsers<std::string_view>;
+
+
+template <typename Output>
+using parser_fn = std::function<mff::parser_combinator::ParserResult<std::string_view, Output>(const std::string_view&)>;
+
+using ignore_parser_fn = parser_fn<mff::parser_combinator::parsers::combinator::Ignore>;
 
 bool is_xml_space(char c) {
     return c == 0x20 || c == 0x9 || c == 0xA || c == 0xD;
@@ -47,12 +52,12 @@ bool is_name_char(char c) {
 
 template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
 auto parse_xml_internal(const Input& input) {
-    using parsers = Parser<Input, Error>;
+    using parsers = Parser;
 
-    auto parse_space = parsers::complete::take_while1(is_xml_space);
-    auto parse_space_optional = parsers::complete::take_while(is_xml_space);
+    ignore_parser_fn parse_space = parsers::ignore(parsers::complete::take_while1(is_xml_space));
+    ignore_parser_fn parse_space_optional = parsers::ignore(parsers::complete::take_while(is_xml_space));
 
-    auto parse_name = parsers::recognize(
+    parser_fn<std::string_view> parse_name = parsers::recognize(
         parsers::tuple(
             parsers::verify(
                 parsers::complete::take(1),
@@ -64,18 +69,18 @@ auto parse_xml_internal(const Input& input) {
             parsers::complete::take_while(is_name_char)
         ));
 
-    auto parse_eq = parsers::between(parse_space_optional, parsers::complete::char_p('='));
+    ignore_parser_fn parse_eq = parsers::ignore(parsers::between(parse_space_optional, parsers::complete::char_p('=')));
 
-    auto is_not_char = [](char c) { return [c](const auto& i) { return c != i; }; };
-    auto any_surrounded_by = [&](char c) {
+    auto is_not_char = [](char c) { return [c](const auto& i) -> bool { return c != i; }; };
+    auto any_surrounded_by = [&](char c) -> parser_fn<std::string_view> {
         return parsers::between(
             parsers::complete::char_p(c),
             parsers::complete::take_while(is_not_char(c)));
     };
 
-    auto parse_attribute_value = parsers::alt(any_surrounded_by('\''), any_surrounded_by('"'));
-    auto parse_attribute = parsers::separated_pair(parse_name, parse_eq, parse_attribute_value);
-    auto parse_attributes = parsers::map(
+    parser_fn<std::string_view> parse_attribute_value = parsers::alt(any_surrounded_by('\''), any_surrounded_by('"'));
+    parser_fn<std::pair<std::string_view, std::string_view>> parse_attribute = parsers::separated_pair(parse_name, parse_eq, parse_attribute_value);
+    parser_fn<std::unordered_map<std::string, std::string>> parse_attributes = parsers::map(
         parsers::many0(parsers::preceded(parse_space_optional, parse_attribute)),
         [](const auto& attributes) {
             std::unordered_map<std::string, std::string> result;
@@ -87,7 +92,7 @@ auto parse_xml_internal(const Input& input) {
             return result;
         }
     );
-    auto parse_tag_content = parsers::terminated(
+    parser_fn<std::pair<std::string_view, std::unordered_map<std::string, std::string>>> parse_tag_content = parsers::terminated(
         parsers::pair(parse_name, parse_attributes),
         parse_space_optional
     );
@@ -95,32 +100,32 @@ auto parse_xml_internal(const Input& input) {
         return parsers::delimited(parsers::complete::tag(start_brace), parser, parsers::complete::tag(end_brace));
     };
 
-    auto parse_empty_element_tag = parsers::map(
+    parser_fn<XmlContent> parse_empty_element_tag = parsers::map(
         in_braces("<", "/>", parse_tag_content),
         [](const auto& contents) -> XmlContent {
             return XmlContent_::EmptyElementTag{std::string(std::get<0>(contents)), std::get<1>(contents)};
         }
     );
-    auto parse_start_element_tag = parsers::map(
+    parser_fn<XmlContent> parse_start_element_tag = parsers::map(
         in_braces("<", ">", parse_tag_content),
         [](const auto& contents) -> XmlContent {
             return XmlContent_::StartTag{std::string(std::get<0>(contents)), std::get<1>(contents)};
         }
     );
-    auto parse_end_element_tag = parsers::map(
+    parser_fn<XmlContent> parse_end_element_tag = parsers::map(
         in_braces("</", ">", parsers::terminated(parse_name, parse_space_optional)),
         [](const auto& name) -> XmlContent {
             return XmlContent_::EndTag{std::string(name)};
         }
     );
-    auto parse_xml_char_data = parsers::map(
+    parser_fn<XmlContent> parse_xml_char_data = parsers::map(
         parsers::complete::take_while1([](auto c) { return c != '<' && c != '>'; }),
         [](const auto& data) -> XmlContent {
             return XmlContent_::CharData{};
         }
     );
 
-    auto parse_some = parsers::alt(
+    parser_fn<XmlContent> parse_some = parsers::alt(
         parse_empty_element_tag,
         parse_start_element_tag,
         parse_end_element_tag,
@@ -131,20 +136,20 @@ auto parse_xml_internal(const Input& input) {
 }
 
 mff::Vector4f parse_color(const std::string& input) {
-    using parsers = Parser<std::string>;
+    using parsers = Parser;
 
-    auto is_hex_digit = [](char c) {
+    auto is_hex_digit = [](char c) -> bool {
         return isxdigit(c);
     };
 
-    auto digits = parsers::verify(
+    parser_fn<std::string_view> digits = parsers::verify(
         parsers::complete::take_while(is_hex_digit),
         [](const auto& value) {
             return value.size() == 6 || value.size() == 3;
         }
     );
 
-    auto whole = parsers::preceded(parsers::complete::char_p('#'), digits);
+    parser_fn<std::string_view> whole = parsers::preceded(parsers::complete::char_p('#'), digits);
 
     auto hex_to_num = [](const std::string& str, int from, int n = 2) -> std::float_t {
         return (std::float_t) std::stoi(str.substr(from, n), 0, 16);
@@ -155,16 +160,16 @@ mff::Vector4f parse_color(const std::string& input) {
         [&](const auto& value) {
             if (value.size() == 3) {
                 return mff::Vector4f{
-                    hex_to_num(value, 0, 1) / 15.0f,
-                    hex_to_num(value, 1, 1) / 15.0f,
-                    hex_to_num(value, 2, 1) / 15.0f,
+                    hex_to_num(std::string(value), 0, 1) / 15.0f,
+                    hex_to_num(std::string(value), 1, 1) / 15.0f,
+                    hex_to_num(std::string(value), 2, 1) / 15.0f,
                     1.0f};
             }
 
             return mff::Vector4f{
-                hex_to_num(value, 0) / 255.0f,
-                hex_to_num(value, 2) / 255.0f,
-                hex_to_num(value, 4) / 255.0f,
+                hex_to_num(std::string(value), 0) / 255.0f,
+                hex_to_num(std::string(value), 2) / 255.0f,
+                hex_to_num(std::string(value), 4) / 255.0f,
                 1.0f};
         }
     )(input)->output;

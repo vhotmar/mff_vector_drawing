@@ -18,7 +18,7 @@ vk::DebugUtilsMessengerCreateInfoEXT get_debug_utils_create_info() {
         nullptr);
 }
 
-VkBool32 debug_callback(
+VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT flags,
     VkDebugUtilsMessageTypeFlagsEXT message_type,
     const VkDebugUtilsMessengerCallbackDataEXT* data,
