@@ -155,7 +155,7 @@ boost::leaf::result<vk::UniquePipeline> RendererContext::build_pipeline(BuildPip
         false,
         false,
         vk::PolygonMode::eFill,
-        vk::CullModeFlagBits::eFrontAndBack,
+        vk::CullModeFlagBits::eNone,
         vk::FrontFace::eClockwise,
         false,
         {},

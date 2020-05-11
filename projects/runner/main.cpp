@@ -40,7 +40,7 @@ boost::leaf::result<void> run(const std::string& file_name) {
 
     canvas::Transform2f base_transform = (canvas::Transform2f::from_translate({0.0f, 0.0f})
         * canvas::Transform2f::from_scale(render_init->get_dimensions().cast<std::float_t>()).inverse())
-        * canvas::Transform2f::from_scale({10.0f, 10.0f});
+        * canvas::Transform2f::from_scale({5.0f, 5.0f});
 
     std::vector<canvas::Canvas::PrerenderedPath> prerendered_paths = {};
 
@@ -77,10 +77,6 @@ boost::leaf::result<void> run(const std::string& file_name) {
 
     canvas::Canvas canvas(render_init->get_renderer());
 
-    // Renderer renderer(window);
-
-    // LEAF_CHECK(renderer.init());
-
     bool first = true;
     float scale = -0.4f;
 
@@ -89,15 +85,6 @@ boost::leaf::result<void> run(const std::string& file_name) {
         // draw commands
         if (!first) {
             scale += 0.01f;
-
-            // enough to render one time
-            canvas::Path2D path = {};
-
-            path.move_to({100, 100});
-            path.line_to({200, 100});
-            path.line_to({200, 200});
-
-            //canvas.fill(path, canvas::Canvas::FillInfo{{1.0f, 0.0f, 0.0f, 1.0f}, base_transform});
 
         } else {
 
