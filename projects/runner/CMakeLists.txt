@@ -8,6 +8,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 find_package(leaf CONFIG REQUIRED)
+find_package(Boost REQUIRED program_options)
 
 # add_executable(${PROJECT_NAME} main.cpp renderer.cpp)
 add_executable(${PROJECT_NAME} main.cpp)
@@ -28,9 +29,11 @@ target_link_libraries(${PROJECT_NAME}
     fmt::fmt
     unofficial::vulkan-memory-allocator::vulkan-memory-allocator
     zajo::leaf
+    ${Boost_LIBRARIES}
     )
 
 target_include_directories(${PROJECT_NAME} INTERFACE
+    ${Boost_INCLUDE_DIRS}
     ${SHADERC_INCLUDE_DIR}
     )
 

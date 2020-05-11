@@ -1,5 +1,7 @@
-# vulkan-memory-allocator eigen3 tl-expected catch2 fmt glfw3 glm leaf spdlog shaderc
+# vulkan-memory-allocator eigen3 tl-expected catch2 fmt glfw3 glm leaf spdlog shaderc boost-program-options
 
+
+find_package(Boost 1.72.0 REQUIRED)
 
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 # target_link_libraries(main PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)

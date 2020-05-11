@@ -10,7 +10,7 @@
         <path d="M120, 10 l0,50 l50,0"/>
     </g>
 
-    <g fill='#f0f' stroke='#0ff' stroke-linecap="square" stroke-linejoin="miter" stroke-width="5">
+    <g fill='#f0f' stroke='#0ff' stroke-linecap="square" stroke-linejoin="miter" stroke-width="5" paint-order="stroke">
         <path d="M10,110 l0,50 l50,0 c50,50 100,10, 50,-10"/>
     </g>
 
