@@ -26,8 +26,9 @@ struct Vertex {
  * Push constants
  */
 struct PushConstants {
-    std::float_t scale;
-    mff::Vector4f color;
+    mff::Vector4f color = mff::Vector4f::Ones();
+    mff::Matrix2f transform = mff::Matrix2f::Identity();
+    mff::Vector2f scale = mff::Vector2f::Zero();
 };
 
 /**

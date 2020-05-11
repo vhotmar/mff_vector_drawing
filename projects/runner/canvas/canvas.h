@@ -5,6 +5,7 @@
 #include "./path.h"
 #include "../third_party/earcut.hpp"
 #include "../renderer/renderer.h"
+#include "./stroke.h"
 
 namespace canvas {
 
@@ -12,9 +13,22 @@ class Canvas {
 public:
     Canvas(Renderer* renderer);
 
-    void fill(canvas::Path2D path, mff::Vector4f color);
+    struct FillInfo {
+        mff::Vector4f color = mff::Vector4f::Ones();
+        Transform2f transform = Transform2f::identity();
+    };
 
-    struct PrerenderedPathFill {
+    void fill(canvas::Path2D& path, const FillInfo& info);
+
+    struct StrokeInfo {
+        mff::Vector4f color = mff::Vector4f::Ones();
+        StrokeStyle style = {};
+        Transform2f transform = Transform2f::identity();
+    };
+
+    void stroke(canvas::Path2D& path, const StrokeInfo& info);
+
+    struct PrerenderedPath {
         struct Record {
             std::vector<Vertex> vertices = {};
             std::vector<std::uint32_t> indices = {};
@@ -26,8 +40,9 @@ public:
         std::vector<Record> records = {};
     };
 
-    static PrerenderedPathFill prerenderFill(canvas::Path2D path, mff::Vector4f color);
-    void drawPrerendered(const PrerenderedPathFill& item);
+    static PrerenderedPath prerenderStroke(canvas::Path2D& path, const StrokeInfo& info);
+    static PrerenderedPath prerenderFill(canvas::Path2D& path, const FillInfo& info);
+    void drawPrerendered(const PrerenderedPath& item);
 
 private:
     Renderer* renderer_;

@@ -8,7 +8,7 @@ void Outline::add_contour(const Contour& contour) {
     contours_.push_back(contour);
 }
 
-const std::vector<Contour>& Outline::get_contours() {
+const std::vector<Contour>& Outline::get_contours() const {
     return contours_;
 }
 

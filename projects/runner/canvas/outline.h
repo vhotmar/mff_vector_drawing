@@ -10,7 +10,7 @@ namespace canvas {
 class Outline {
 public:
     void add_contour(const Contour& contour);
-    const std::vector<Contour>& get_contours();
+    const std::vector<Contour>& get_contours() const;
 
     void transform(const Transform2f& transform);
 

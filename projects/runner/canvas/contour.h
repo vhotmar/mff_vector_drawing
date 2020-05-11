@@ -33,12 +33,15 @@ struct Contour {
     void add_endpoint(const mff::Vector2f& point);
     void add_quadratic(const mff::Vector2f& control, const mff::Vector2f& point);
     void add_cubic(const mff::Vector2f& control0, const mff::Vector2f& control1, const mff::Vector2f& point);
+    void add_segment(const Segment& point);
 
     void transform(const Transform2f& transform);
 
     std::size_t size() const;
 
-    std::vector<mff::Vector2f> flatten();
+    std::vector<mff::Vector2f> flatten() const;
+
+    std::optional<LineSegment2f> last_tangent() const;
 
     /**
      * View which converts Contour into segments
@@ -64,7 +67,11 @@ struct Contour {
         ContourSegmentView(const Contour* contour_, bool ignore_close_segment = false);
     };
 
-    ContourSegmentView segment_view(bool ignore_close_segment = false) const;
+    struct SegmentViewOptions {
+        bool ignore_close_segment = false;
+    };
+
+    ContourSegmentView segment_view(const SegmentViewOptions& options = {false}) const;
 };
 
 }

@@ -30,6 +30,26 @@ void Contour::add_cubic(const mff::Vector2f& control0, const mff::Vector2f& cont
     add_point(point, PointFlag::CONCRETE);
 }
 
+void Contour::add_segment(const Segment& segment) {
+    add_point(segment.get_baseline().from, PointFlag::CONCRETE);
+
+    std::visit(
+        mff::overloaded{
+            [&](const Kind_::Quadratic& quad) {
+                add_point(quad.control, PointFlag::CONTROL_POINT_0);
+            },
+            [&](const Kind_::Cubic& quad) {
+                add_point(quad.control.from, PointFlag::CONTROL_POINT_0);
+                add_point(quad.control.to, PointFlag::CONTROL_POINT_1);
+            },
+            [](const auto& d) {}
+        },
+        segment.data
+    );
+
+    add_point(segment.get_baseline().to, PointFlag::CONCRETE);
+}
+
 std::size_t Contour::size() const {
     return points.size();
 }
@@ -40,16 +60,16 @@ void Contour::transform(const Transform2f& transform) {
     }
 }
 
-Contour::ContourSegmentView Contour::segment_view(bool ignore_close_segment) const {
-    return ContourSegmentView(this, ignore_close_segment);
+Contour::ContourSegmentView Contour::segment_view(const SegmentViewOptions& options) const {
+    return ContourSegmentView(this, options.ignore_close_segment);
 }
 
-std::vector<mff::Vector2f> Contour::flatten() {
+std::vector<mff::Vector2f> Contour::flatten() const {
     auto segments = segment_view();
 
     std::vector<mff::Vector2f> result;
 
-    for (auto segment: segments) {
+    for (const auto& segment: segments) {
         auto flattened = segment.flatten();
 
         auto start = std::begin(flattened);
@@ -64,6 +84,11 @@ std::vector<mff::Vector2f> Contour::flatten() {
     return result;
 }
 
+std::optional<LineSegment2f> Contour::last_tangent() const {
+    if (points.size() < 2) return std::nullopt;
+
+    return LineSegment2f{points[points.size() - 2], points[points.size() - 1]};
+}
 
 const Segment& Contour::ContourSegmentView::read() const {
     return current_segment_;

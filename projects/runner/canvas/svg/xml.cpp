@@ -154,12 +154,18 @@ mff::Vector4f parse_color(const std::string& input) {
         whole,
         [&](const auto& value) {
             if (value.size() == 3) {
-                return mff::Vector4f{hex_to_num(value, 0, 1) / 15.0f, hex_to_num(value, 1, 1) / 15.0f,
-                    hex_to_num(value, 2, 1) / 15.0f, 1.0f};
+                return mff::Vector4f{
+                    hex_to_num(value, 0, 1) / 15.0f,
+                    hex_to_num(value, 1, 1) / 15.0f,
+                    hex_to_num(value, 2, 1) / 15.0f,
+                    1.0f};
             }
 
-            return mff::Vector4f{hex_to_num(value, 0) / 255.0f, hex_to_num(value, 1) / 255.0f,
-                hex_to_num(value, 2) / 255.0f, 1.0f};
+            return mff::Vector4f{
+                hex_to_num(value, 0) / 255.0f,
+                hex_to_num(value, 2) / 255.0f,
+                hex_to_num(value, 4) / 255.0f,
+                1.0f};
         }
     )(input)->output;
 }
@@ -197,7 +203,7 @@ std::vector<std::tuple<Path2D, DrawState>> to_paths(const std::string& data) {
         }
 
         if (mff::has(attributes, "stroke-width")) {
-
+            state.stroke_width = std::stof(attributes.at("stroke-width"));
         }
     };
 

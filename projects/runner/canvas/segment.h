@@ -1,6 +1,9 @@
 #pragma once
 
+#include <variant>
+
 #include <mff/graphics/utils.h>
+#include <mff/utils.h>
 
 #include "./math.h"
 
@@ -16,26 +19,87 @@ struct FlattenOptions {
     std::size_t steps = 15;
 };
 
-/**
- * Basic unit of one contour, it is either Line, Quadratic or Bezier
- */
-struct Segment {
+namespace Kind_ {
+
+struct Line {
+    LineSegment2f baseline;
+};
+
+struct Quadratic {
+    LineSegment2f baseline;
+    mff::Vector2f control;
+
+    struct Hull {
+        mff::Vector2f p1;
+        mff::Vector2f p2;
+        mff::Vector2f p3;
+
+        mff::Vector2f p12;
+        mff::Vector2f p23;
+
+        mff::Vector2f p123;
+    };
+
+    Hull hull(std::float_t t) const;
+};
+
+struct Cubic {
     LineSegment2f baseline;
     LineSegment2f control;
-    SegmentKind kind;
 
-    Segment transform(const Transform2f& t);
+    struct Hull {
+        mff::Vector2f p1;
+        mff::Vector2f p2;
+        mff::Vector2f p3;
+        mff::Vector2f p4;
 
+        mff::Vector2f p12;
+        mff::Vector2f p23;
+        mff::Vector2f p34;
+
+        mff::Vector2f p123;
+        mff::Vector2f p234;
+
+        mff::Vector2f p1234;
+    };
+
+    Hull hull(std::float_t t) const;
+};
+
+}
+
+using Kind = std::variant<Kind_::Line, Kind_::Quadratic, Kind_::Cubic>;
+
+struct Segment {
+    Kind data;
+
+    LineSegment2f get_baseline() const;
+    mff::Vector2f get_last_control() const;
+
+    mff::Vector2f derivative(std::float_t t) const;
     std::float_t length() const;
     std::float_t time_for_distance(std::float_t dist) const;
+    Segment transform(const Transform2f& t);
+    mff::Vector2f normal(std::float_t t) const;
     mff::Vector2f evaluate(std::float_t t) const;
-    std::vector<mff::Vector2f> flatten(FlattenOptions options = {});
+    std::pair<Segment, Segment> split(std::float_t t) const;
+    std::vector<mff::Vector2f> flatten(FlattenOptions options = {}) const;
+
+    using SegmentHandler = std::function<void(const Segment&)>;
+
+    // Reason why not return segment is future-proofing (we may do some splitting in future)
+    void offset(std::float_t dist, const SegmentHandler& handler) const;
+    Segment reversed() const;
+
+    bool is_line() const;
+    bool is_quadratic() const;
+    bool is_cubic() const;
+
     Segment to_cubic() const;
 
     static Segment line(const LineSegment2f& line);
     static Segment quadratic(const LineSegment2f& line, const mff::Vector2f& ctrl);
     static Segment cubic(const LineSegment2f& line, const LineSegment2f& ctrl);
-    // https://pomax.github.io/bezierinfo/#circles_cubic
     static Segment arc(std::float_t phi);
 };
 

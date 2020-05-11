@@ -85,29 +85,6 @@ boost::leaf::result<UniqueRenderPass> RenderPass::build(
         vk_dependencies.push_back(dependency.to_vulkan());
     }
 
-
-    vk::SubpassDependency color_dependency(
-        VK_SUBPASS_EXTERNAL,
-        0,
-        vk::PipelineStageFlagBits::eBottomOfPipe,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::AccessFlagBits::eMemoryRead,
-        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
-        vk::DependencyFlagBits::eByRegion
-    );
-
-    vk::SubpassDependency depth_dependency(
-        0,
-        VK_SUBPASS_EXTERNAL,
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits::eBottomOfPipe,
-        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead,
-        vk::AccessFlagBits::eMemoryRead,
-        vk::DependencyFlagBits::eByRegion
-    );
-
-    std::vector<vk::SubpassDependency> dpndcies = {color_dependency};
-
     vk::RenderPassCreateInfo info(
         {},
         vk_attachments.size(),

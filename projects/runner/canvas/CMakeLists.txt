@@ -5,6 +5,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     outline.cpp
     path.cpp
     segment.cpp
+    stroke.cpp
     )
 
 

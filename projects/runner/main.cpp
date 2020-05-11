@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <variant>
+#include <filesystem>
 
 #include <mff/leaf.h>
 #include <mff/graphics/logger.h>
@@ -13,12 +14,12 @@
 #include "./canvas/canvas.h"
 #include "./canvas/path.h"
 
-boost::leaf::result<void> run() {
+boost::leaf::result<void> run(const std::string& file_name) {
     mff::logger::vulkan = mff::logger::setup_vulkan_logging();
     mff::logger::window = mff::logger::setup_window_logging();
     mff::window::EventLoop event_loop;
 
-    auto tiger_svg = mff::read_file("./easypeasy.svg");
+    auto tiger_svg = mff::read_file(file_name);
     std::string tiger_svg_string(tiger_svg.begin(), tiger_svg.end());
 
     auto tiger_svg_paths = canvas::svg::to_paths(tiger_svg_string);
@@ -29,25 +30,31 @@ boost::leaf::result<void> run() {
     LEAF_AUTO(
         window, mff::window::glfw::WindowBuilder()
         .with_size({kWIDTH, kHEIGHT})
-        .with_title("My app")
+        .with_title("SVG renderer app")
         .build(&event_loop));
 
     LEAF_AUTO(render_init, RendererInit::build(window));
 
-    canvas::Transform2f base_transform = (canvas::Transform2f::from_transpose({-1.0f, -1.0f})
+    canvas::Transform2f base_transform = (canvas::Transform2f::from_transpose({0.0f, 0.0f})
         * canvas::Transform2f::from_scale(render_init->get_dimensions().cast<std::float_t>()).inverse())
         * canvas::Transform2f::from_scale({5.0f, 5.0f});
 
-    auto prerendered_paths = tiger_svg_paths
-        | ranges::views::transform(
-            [&](const auto& item) {
-                auto[path, state] = item;
-                path.transform(base_transform);
+    std::vector<canvas::Canvas::PrerenderedPath> prerendered_paths = {};
 
-                return canvas::Canvas::prerenderFill(path, state.fill_color);
-            }
-        )
-        | ranges::to<std::vector>();
+    for (const auto& item: tiger_svg_paths) {
+        auto[path, state] = item;
+
+        if (state.fill) {
+            prerendered_paths.push_back(canvas::Canvas::prerenderFill(path, {state.fill_color, base_transform}));
+        }
+
+        if (state.stroke) {
+            prerendered_paths.push_back(canvas::Canvas::prerenderStroke(path,
+                                                                        {state.stroke_color, {state.stroke_width},
+                                                                            base_transform}
+            ));
+        }
+    }
 
     canvas::Canvas canvas(render_init->get_renderer());
 
@@ -97,10 +104,27 @@ boost::leaf::result<void> run() {
     return {};
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc == 1) {
+        std::cout << "Please specify name of file you want to render" << std::endl;
+        return -1;
+    }
+
+    if (argc != 2) {
+        std::cout << "You have to specify exactly one argument" << std::endl;
+        return -1;
+    }
+
+    std::string file_name(argv[1]);
+
+    if (!std::filesystem::exists(file_name)) {
+        std::cout << fmt::format("Specified file \"{}\" does not exists", file_name) << std::endl;
+        return -1;
+    }
+
     return boost::leaf::try_handle_all(
         [&]() -> boost::leaf::result<int> {
-            LEAF_CHECK(run());
+            LEAF_CHECK(run(file_name));
 
             return 0;
         },
