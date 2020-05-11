@@ -108,20 +108,22 @@ const Segment& Contour::ContourSegmentView::read() const {
 }
 
 bool Contour::ContourSegmentView::equal(ranges::default_sentinel_t) const {
-    bool include_close_segment = contour_->closed && !ignore_close_segment_;
-
-    if (!include_close_segment) return index_ >= (contour_->size() + 1);
-    return index_ >= (contour_->size() + 2);
-
-//    return ((!include_close_segment && index_ > (contour_->size() - 1)) || index_ > contour_->size());
+    return end_;
 }
 
 void Contour::ContourSegmentView::next() {
-    auto from_point = index_ <= contour_->size() ? contour_->points[index_ - 1] : mff::Vector2f{0.0f, 0.0f};
+    bool include_close_segment = contour_->closed && !ignore_close_segment_;
+
+    if ((!include_close_segment && index_ == contour_->size()) || index_ == (contour_->size() + 1)) {
+        end_ = true;
+        return;
+    }
+
+    auto from_point = contour_->points.at(index_ - 1);
 
     // closing part of contour
     if (index_ == contour_->size()) {
-        auto to_point = contour_->points[0];
+        auto to_point = contour_->points.at(0);
         current_segment_ = Segment::line({from_point, to_point});
         index_++;
         return;
@@ -131,9 +133,7 @@ void Contour::ContourSegmentView::next() {
         auto index = index_;
         index_++;
 
-        if (index_ >= contour_->size()) return std::make_tuple(true, mff::Vector2f{0.0f, 0.0f});
-
-        return std::make_tuple(contour_->point_flags[index] == PointFlag::CONCRETE, contour_->points[index]);
+        return std::make_tuple(contour_->point_flags[index] == PointFlag::CONCRETE, contour_->points.at(index));
     };
 
     auto[p1_end, p1] = get_next();

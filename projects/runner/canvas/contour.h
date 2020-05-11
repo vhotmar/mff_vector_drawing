@@ -55,6 +55,7 @@ struct Contour {
         std::size_t index_ = 1;
         Segment current_segment_;
         bool ignore_close_segment_ = false;
+        bool end_ = false;
 
         const Segment& read() const;
 
