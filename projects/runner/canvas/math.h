@@ -4,6 +4,27 @@
 
 namespace canvas {
 
+struct Rectf {
+    mff::Vector2f offset;
+    mff::Vector2f dimensions;
+
+    mff::Vector2f top_left() const {
+        return offset;
+    }
+
+    mff::Vector2f top_right() const {
+        return {offset[0] + dimensions[0], offset[1]};
+    }
+
+    mff::Vector2f bottom_left() const {
+        return {offset[0], offset[1] + dimensions[1]};
+    }
+
+    mff::Vector2f bottom_right() const {
+        return offset + dimensions;
+    }
+};
+
 struct LineSegment2f {
     mff::Vector2f from;
     mff::Vector2f to;
@@ -60,15 +81,17 @@ struct LineSegment2f {
 
 struct Transform2f {
     mff::Matrix2f transform;
-    mff::Vector2f transpose;
+    mff::Vector2f translation;
 
     Transform2f();
-    Transform2f(mff::Matrix2f transform, mff::Vector2f transpose);
+    Transform2f(const mff::Matrix2f& transform, const mff::Vector2f& translation);
 
-    static Transform2f from_transpose(mff::Vector2f transpose);
-    static Transform2f from_scale(mff::Vector2f scale);
+    static Transform2f from_translate(const mff::Vector2f& translation);
+    static Transform2f from_scale(const mff::Vector2f& scale);
+    static Transform2f from_rotation(std::float_t angle);
     static Transform2f identity();
 
+    Transform2f translate(const mff::Vector2f& translation) const;
     Transform2f inverse() const;
     mff::Vector2f apply(const mff::Vector2f& v) const;
     Transform2f apply(const Transform2f& t) const;

@@ -204,7 +204,7 @@ StrokeResult get_stroke(
                     add_indices_rectangle(curr_vertices_ix);
                 },
                 [&](const LineJoin_::Round r) {
-                    std::float_t step = M_PI / (half_width);
+                    std::float_t step = M_PI / (5 * half_width);
                     std::float_t beta = std::acos(dLp[0]); // angle of left normal
                     if (dLp[1] < 0.0f) beta = -beta;
 

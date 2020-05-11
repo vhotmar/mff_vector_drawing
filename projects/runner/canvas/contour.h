@@ -34,6 +34,7 @@ struct Contour {
     void add_quadratic(const mff::Vector2f& control, const mff::Vector2f& point);
     void add_cubic(const mff::Vector2f& control0, const mff::Vector2f& control1, const mff::Vector2f& point);
     void add_segment(const Segment& point);
+    void add_ellipse(const Transform2f& transform);
 
     void transform(const Transform2f& transform);
 

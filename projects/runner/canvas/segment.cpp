@@ -117,7 +117,7 @@ std::float_t Segment::time_for_distance(std::float_t dist) const {
     return dist / length();
 }
 
-Segment Segment::transform(const Transform2f& t) {
+Segment Segment::transform(const Transform2f& t) const {
     auto new_data = std::visit(
         mff::overloaded{
             [&](const Kind_::Line& line) -> Kind {

@@ -60,7 +60,7 @@ Canvas::PrerenderedPath Canvas::prerenderFill(canvas::Path2D& path, const Canvas
             .emplace_back(
                 std::move(vertices),
                 std::move(indices),
-                PushConstants{info.color, info.transform.transform, info.transform.transpose}
+                PushConstants{info.color, info.transform.transform, info.transform.translation}
             );
     }
 
@@ -89,7 +89,7 @@ Canvas::PrerenderedPath Canvas::prerenderStroke(canvas::Path2D& path, const Canv
             .emplace_back(
                 std::move(vertices),
                 std::move(points.indices),
-                PushConstants{info.color, info.transform.transform, info.transform.transpose}
+                PushConstants{info.color, info.transform.transform, info.transform.translation}
             );
     }
 

@@ -167,11 +167,11 @@ boost::leaf::result<vk::UniquePipeline> RendererContext::build_pipeline(BuildPip
 
     vk::PipelineColorBlendAttachmentState blend_attachment(
         info.blend_enabled,
-        vk::BlendFactor::eOne,
+        vk::BlendFactor::eSrcAlpha,
         vk::BlendFactor::eOneMinusSrcAlpha,
         info.blend_op,
         vk::BlendFactor::eOne,
-        vk::BlendFactor::eOne,
+        vk::BlendFactor::eZero,
         info.blend_op,
         info.color_mask
     );

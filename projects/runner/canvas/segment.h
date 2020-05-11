@@ -79,7 +79,7 @@ struct Segment {
     mff::Vector2f derivative(std::float_t t) const;
     std::float_t length() const;
     std::float_t time_for_distance(std::float_t dist) const;
-    Segment transform(const Transform2f& t);
+    Segment transform(const Transform2f& t) const;
     mff::Vector2f normal(std::float_t t) const;
     mff::Vector2f evaluate(std::float_t t) const;
     std::pair<Segment, Segment> split(std::float_t t) const;
@@ -101,6 +101,12 @@ struct Segment {
     static Segment quadratic(const LineSegment2f& line, const mff::Vector2f& ctrl);
     static Segment cubic(const LineSegment2f& line, const LineSegment2f& ctrl);
     static Segment arc(std::float_t phi);
+
+    static Segment quarter_circle_arc() {
+        auto base = arc(M_PI_2);
+
+        return base;
+    }
 };
 
 }

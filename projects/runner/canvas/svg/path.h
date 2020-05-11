@@ -57,5 +57,6 @@ using Command = std::variant<
 >;
 
 boost::leaf::result<std::vector<Command>> parse_path(const std::string& input);
+boost::leaf::result<std::vector<mff::Vector2f>> parse_coordinates(const std::string& input);
 
 }

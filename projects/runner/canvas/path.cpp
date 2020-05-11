@@ -25,6 +25,24 @@ void Path2D::bezier_to(const mff::Vector2f& control0, const mff::Vector2f& contr
     current_contour_.add_cubic(control0, control1, point);
 }
 
+void Path2D::rect(const Rectf& r) {
+    end_current_contour();
+    current_contour_.add_endpoint(r.top_left());
+    current_contour_.add_endpoint(r.top_right());
+    current_contour_.add_endpoint(r.bottom_right());
+    current_contour_.add_endpoint(r.bottom_left());
+    current_contour_.close();
+}
+
+void Path2D::ellipse(const mff::Vector2f& center, const mff::Vector2f& axes) {
+    end_current_contour();
+
+    Transform2f transform = Transform2f::from_scale(axes).translate(center);
+    current_contour_.add_ellipse(transform);
+
+    end_current_contour();
+}
+
 Outline Path2D::get_outline() {
     end_current_contour();
     return outline_;

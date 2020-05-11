@@ -35,24 +35,40 @@ boost::leaf::result<void> run(const std::string& file_name) {
 
     LEAF_AUTO(render_init, RendererInit::build(window));
 
-    canvas::Transform2f base_transform = (canvas::Transform2f::from_transpose({0.0f, 0.0f})
+    canvas::Transform2f base_transform = (canvas::Transform2f::from_translate({0.0f, 0.0f})
         * canvas::Transform2f::from_scale(render_init->get_dimensions().cast<std::float_t>()).inverse())
-        * canvas::Transform2f::from_scale({5.0f, 5.0f});
+        * canvas::Transform2f::from_scale({10.0f, 10.0f});
 
     std::vector<canvas::Canvas::PrerenderedPath> prerendered_paths = {};
 
     for (const auto& item: tiger_svg_paths) {
         auto[path, state] = item;
 
-        if (state.fill) {
-            prerendered_paths.push_back(canvas::Canvas::prerenderFill(path, {state.fill_color, base_transform}));
-        }
+        auto prerender_fill = [&]() {
+            auto[path, state] = item;
 
-        if (state.stroke) {
-            prerendered_paths.push_back(canvas::Canvas::prerenderStroke(path,
-                                                                        {state.stroke_color, {state.stroke_width},
-                                                                            base_transform}
-            ));
+            if (state.fill)
+                prerendered_paths.push_back(canvas::Canvas::prerenderFill(path, {state.fill_color, base_transform}));
+        };
+
+        auto prerender_stroke = [&]() {
+            auto[path, state] = item;
+
+            if (state.stroke)
+                prerendered_paths.push_back(
+                    canvas::Canvas::prerenderStroke(
+                        path,
+                        {state.stroke_color, {state.stroke_width, state.line_cap, state.line_join},
+                            base_transform}
+                    ));
+        };
+
+        if (state.paint_first == canvas::svg::DrawStatePaintFirst::Fill) {
+            prerender_fill();
+            prerender_stroke();
+        } else {
+            prerender_stroke();
+            prerender_fill();
         }
     }
 
@@ -76,21 +92,8 @@ boost::leaf::result<void> run(const std::string& file_name) {
             // enough to render one time
             canvas::Path2D path;
 
-            path.move_to({100, 100});
-            path.line_to({100, 200});
-            //path.line_to({200, 200});
-            //path.line_to({200, 300});
-            //path.quad_to({250, 300}, {300, 300});
-            //path.close_path();
-
-            canvas.stroke(path,
-                          {{1.0f, 1.0f, 0.0f, 1.0f}, {10.0f, canvas::LineCap_::Round{}, canvas::LineJoin_::Round{}},
-                              base_transform}
-            );
-
-
             for (const auto& path: prerendered_paths) {
-                // canvas.drawPrerendered(path);
+                canvas.drawPrerendered(path);
             }
         }
 

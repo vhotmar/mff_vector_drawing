@@ -14,6 +14,8 @@ public:
     void line_to(const mff::Vector2f& point);
     void quad_to(const mff::Vector2f& control, const mff::Vector2f& point);
     void bezier_to(const mff::Vector2f& control0, const mff::Vector2f& control1, const mff::Vector2f& point);
+    void rect(const Rectf& point);
+    void ellipse(const mff::Vector2f& center, const mff::Vector2f& axes);
 
     Outline get_outline();
 

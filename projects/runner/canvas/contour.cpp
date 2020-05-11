@@ -50,6 +50,15 @@ void Contour::add_segment(const Segment& segment) {
     add_point(segment.get_baseline().to, PointFlag::CONCRETE);
 }
 
+
+void Contour::add_ellipse(const Transform2f& transform) {
+    auto seg = Segment::quarter_circle_arc();
+    add_segment(seg.transform(transform));
+    add_segment(seg.transform(transform * Transform2f::from_rotation(M_PI_2)));
+    add_segment(seg.transform(transform * Transform2f::from_rotation(2 * M_PI_2)));
+    add_segment(seg.transform(transform * Transform2f::from_rotation(3 * M_PI_2)));
+}
+
 std::size_t Contour::size() const {
     return points.size();
 }

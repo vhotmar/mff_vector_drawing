@@ -184,11 +184,25 @@ std::vector<std::tuple<Path2D, DrawState>> to_paths(const std::string& data) {
     };
 
     auto apply_info = [](DrawState& state, const std::unordered_map<std::string, std::string>& attributes) {
+        // display none
+        if (state.hide) return;
+
+        if (mff::has(attributes, "display")) {
+            if (attributes.at("display") == "none") {
+                state.fill = false;
+                state.stroke = false;
+                state.hide = true;
+                return;
+            }
+        }
+
         if (mff::has(attributes, "fill")) {
             if (attributes.at("fill") == "none") {
                 state.fill = false;
             } else {
+                auto op = state.fill_color[3];
                 state.fill_color = parse_color(attributes.at("fill"));
+                state.fill_color[3] = op;
                 state.fill = true;
             }
         }
@@ -197,13 +211,52 @@ std::vector<std::tuple<Path2D, DrawState>> to_paths(const std::string& data) {
             if (attributes.at("stroke") == "none") {
                 state.stroke = false;
             } else {
+                auto op = state.stroke_color[3];
                 state.stroke_color = parse_color(attributes.at("stroke"));
+                state.stroke_color[3] = op;
                 state.stroke = true;
             }
         }
 
         if (mff::has(attributes, "stroke-width")) {
             state.stroke_width = std::stof(attributes.at("stroke-width"));
+        }
+
+        if (mff::has(attributes, "stroke-linecap")) {
+            auto cap = attributes.at("stroke-linecap");
+
+            if (cap == "round") state.line_cap = LineCap_::Round{};
+            if (cap == "butt") state.line_cap = LineCap_::Butt{};
+            if (cap == "square") state.line_cap = LineCap_::Square{};
+        }
+
+        if (mff::has(attributes, "stroke-miterlimit")) {
+            state.stroke_miterlimit = std::stof(attributes.at("stroke-miterlimit"));
+        }
+
+        if (mff::has(attributes, "stroke-linejoin")) {
+            auto cap = attributes.at("stroke-linejoin");
+
+            if (cap == "miter") state.line_join = LineJoin_::Miter{state.stroke_miterlimit};
+            if (cap == "round") state.line_join = LineJoin_::Round{};
+            if (cap == "bevel") state.line_join = LineJoin_::Bevel{};
+        }
+
+        if (mff::has(attributes, "fill-opacity")) {
+            state.fill_color[3] = std::stof(attributes.at("fill-opacity"));
+        }
+
+        if (mff::has(attributes, "stroke-opacity")) {
+            state.stroke_color[3] = std::stof(attributes.at("stroke-opacity"));
+        }
+
+        if (mff::has(attributes, "paint-order")) {
+            auto po = attributes.at("paint-order");
+            if (po == "fill" || po == "normal") {
+                state.paint_first = DrawStatePaintFirst::Fill;
+            } else if (po == "stroke") {
+                state.paint_first = DrawStatePaintFirst::Stroke;
+            }
         }
     };
 
@@ -228,6 +281,140 @@ std::vector<std::tuple<Path2D, DrawState>> to_paths(const std::string& data) {
 
                         auto path_string = empty.attributes.at("d");
                         auto path = Path2D::from_svg_commands(parse_path(path_string).value());
+
+                        result.push_back(std::make_tuple(path, curr_state));
+                    }
+
+                    if (to_lower(empty.name) == "rect"
+                        && mff::has(empty.attributes, "width")
+                        && mff::has(empty.attributes, "height")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        std::float_t width = std::stof(empty.attributes.at("width"));
+                        std::float_t height = std::stof(empty.attributes.at("height"));
+
+                        std::float_t x = 0.0f;
+                        if (mff::has(empty.attributes, "x")) {
+                            x = std::stof(empty.attributes.at("x"));
+                        }
+
+                        std::float_t y = 0.0f;
+                        if (mff::has(empty.attributes, "y")) {
+                            y = std::stof(empty.attributes.at("y"));
+                        }
+
+                        Path2D rect = {};
+                        rect.rect({{x, y}, {width, height}});
+
+                        result.push_back(std::make_tuple(rect, curr_state));
+                    }
+
+                    if (to_lower(empty.name) == "ellipse"
+                        && mff::has(empty.attributes, "rx")
+                        && mff::has(empty.attributes, "ry")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        std::float_t rx = std::stof(empty.attributes.at("rx"));
+                        std::float_t ry = std::stof(empty.attributes.at("ry"));
+
+                        std::float_t cx = 0.0f;
+                        if (mff::has(empty.attributes, "cx")) {
+                            cx = std::stof(empty.attributes.at("cx"));
+                        }
+
+                        std::float_t cy = 0.0f;
+                        if (mff::has(empty.attributes, "cy")) {
+                            cy = std::stof(empty.attributes.at("cy"));
+                        }
+
+                        Path2D path = {};
+                        path.ellipse({cx, cy}, {rx, ry});
+
+                        result.push_back(std::make_tuple(path, curr_state));
+                    }
+
+                    if (to_lower(empty.name) == "circle"
+                        && mff::has(empty.attributes, "r")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        std::float_t r = std::stof(empty.attributes.at("r"));
+
+                        std::float_t cx = 0.0f;
+                        if (mff::has(empty.attributes, "cx")) {
+                            cx = std::stof(empty.attributes.at("cx"));
+                        }
+
+                        std::float_t cy = 0.0f;
+                        if (mff::has(empty.attributes, "cy")) {
+                            cy = std::stof(empty.attributes.at("cy"));
+                        }
+
+                        Path2D path = {};
+                        path.ellipse({cx, cy}, {r, r});
+
+                        result.push_back(std::make_tuple(path, curr_state));
+                    }
+
+                    if (to_lower(empty.name) == "polygon" && mff::has(empty.attributes, "points")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        auto points_string = empty.attributes.at("points");
+                        auto coordinates = parse_coordinates(points_string).value();
+                        Path2D path = {};
+
+                        bool first = true;
+                        for (const auto& coord: coordinates) {
+                            if (first) path.move_to(coord);
+                            else path.line_to(coord);
+
+                            first = false;
+                        }
+
+                        path.close_path();
+
+                        result.push_back(std::make_tuple(path, curr_state));
+                    }
+
+                    if (to_lower(empty.name) == "polyline" && mff::has(empty.attributes, "points")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        auto points_string = empty.attributes.at("points");
+                        auto coordinates = parse_coordinates(points_string).value();
+                        Path2D path = {};
+
+                        bool first = true;
+                        for (const auto& coord: coordinates) {
+                            if (first) path.move_to(coord);
+                            else path.line_to(coord);
+
+                            first = false;
+                        }
+
+                        result.push_back(std::make_tuple(path, curr_state));
+                    }
+
+
+                    if (to_lower(empty.name) == "line"
+                        && mff::has(empty.attributes, "x1")
+                        && mff::has(empty.attributes, "y1")
+                        && mff::has(empty.attributes, "x2")
+                        && mff::has(empty.attributes, "y2")) {
+                        DrawState curr_state = states.top();
+                        apply_info(curr_state, empty.attributes);
+
+                        std::float_t x1 = std::stof(empty.attributes.at("x1"));
+                        std::float_t x2 = std::stof(empty.attributes.at("x2"));
+                        std::float_t y1 = std::stof(empty.attributes.at("y1"));
+                        std::float_t y2 = std::stof(empty.attributes.at("y2"));
+
+                        Path2D path = {};
+                        path.move_to({x1, y1});
+                        path.line_to({x2, y2});
 
                         result.push_back(std::make_tuple(path, curr_state));
                     }

@@ -83,8 +83,54 @@ struct parse_float {
 ///////////////////////
 
 template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
+auto parse_coordinates_internal(const Input& input) {
+    using parsers = Parser<Input, Error>;
+    auto parse_space = parsers::ignore(parsers::complete::take_while1(is_path_space));
+    auto parse_space_optional = parsers::ignore(parsers::complete::take_while(is_path_space));
+    auto parse_comma_symbol = parsers::ignore(parsers::complete::char_p(','));
+
+    // space or comma with some space
+    auto parse_comma_separator = parsers::tuple(
+        parsers::alt(
+            // required space and optional comma
+            parsers::ignore(parsers::tuple(parse_space, parsers::opt(parse_comma_symbol))),
+            // required comma
+            parse_comma_symbol
+        ),
+        // optional following space
+        parse_space_optional
+    );
+    auto parse_comma_separator_optional = parsers::ignore(parsers::opt(parse_comma_separator));
+
+    // factory which indicates that specified parser should be preceded by comma or space
+    auto preceded_with_comma = [&](const auto& parser) {
+        return parsers::preceded(parse_comma_separator_optional, parser);
+    };
+
+    // number parser
+    auto parse_number = parse_float<Input>{};
+
+    // two numbers with separators between them
+    auto parse_coordinate = parsers::map(
+        parsers::pair(parse_number, preceded_with_comma(parse_number)),
+        [](auto i) -> mff::Vector2f { return {i.first, i.second}; }
+    );
+    auto parse_coordinate_sequence = parsers::many1(preceded_with_comma(parse_coordinate));
+
+    return parse_coordinate_sequence(input);
+}
+
+boost::leaf::result<std::vector<mff::Vector2f>> parse_coordinates(const std::string& input) {
+    auto result = parse_coordinates_internal<std::string_view>(input);
+
+    if (!result) return LEAF_NEW_ERROR();
+
+    return std::move(result->output);
+}
+
+template <typename Input, typename Error = mff::parser_combinator::error::DefaultError<Input>>
 auto parse_path_internal(const Input& input) {
-    using parsers = Parser<Input>;
+    using parsers = Parser<Input, Error>;
 
     // at least one space
     auto parse_space = parsers::ignore(parsers::complete::take_while1(is_path_space));
