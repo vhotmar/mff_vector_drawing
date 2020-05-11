@@ -22,4 +22,13 @@ Matrix2f from_array(std::array<std::float_t, 4> arr) {
     return m;
 }
 
+
+bool is_approx_zero(const mff::Vector2f& a) {
+    return a.squaredNorm() < (kEPSILON * kEPSILON);
+}
+
+bool are_approx_same(const mff::Vector2f& a, const mff::Vector2f& b) {
+    return is_approx_zero(b - a);
+}
+
 }

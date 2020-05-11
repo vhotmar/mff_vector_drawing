@@ -22,4 +22,9 @@ Matrix2f from_array(std::array<std::float_t, 4> arr);
 
 Vector2f lerp(const Vector2f& a, const Vector2f& b, std::float_t t);
 
+const std::float_t kEPSILON = 0.001;
+
+bool is_approx_zero(const mff::Vector2f& a);
+bool are_approx_same(const mff::Vector2f& a, const mff::Vector2f& b);
+
 }

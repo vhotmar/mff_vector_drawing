@@ -65,13 +65,32 @@ boost::leaf::result<void> run(const std::string& file_name) {
     bool first = true;
     float scale = -0.4f;
 
+
     auto draw = [&]() -> boost::leaf::result<void> {
         // draw commands
         if (!first) {
             scale += 0.01f;
 
+
+        } else {
+            // enough to render one time
+            canvas::Path2D path;
+
+            path.move_to({100, 100});
+            path.line_to({100, 200});
+            //path.line_to({200, 200});
+            //path.line_to({200, 300});
+            //path.quad_to({250, 300}, {300, 300});
+            //path.close_path();
+
+            canvas.stroke(path,
+                          {{1.0f, 1.0f, 0.0f, 1.0f}, {10.0f, canvas::LineCap_::Round{}, canvas::LineJoin_::Round{}},
+                              base_transform}
+            );
+
+
             for (const auto& path: prerendered_paths) {
-                canvas.drawPrerendered(path);
+                // canvas.drawPrerendered(path);
             }
         }
 
