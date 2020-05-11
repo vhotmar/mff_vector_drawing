@@ -26,6 +26,16 @@ boost::leaf::result<UniqueRenderPass> RenderPass::build(
         | ranges::views::transform([](const auto& attachment) { return attachment.to_vulkan(); })
         | ranges::to<std::vector>();
 
+    std::size_t references_count = 0;
+    for (const auto& info: subpasses) {
+        references_count += info.color_attachments.size();
+        references_count += info.input_attachments.size();
+        references_count += info.preserve_attachments.size();
+        references_count += info.resolve_attachments.size();
+        references_count += 1;
+    }
+    vk_references.reserve(references_count);
+
     std::size_t index = 0;
 
     for (const auto& info: subpasses) {
@@ -42,13 +52,9 @@ boost::leaf::result<UniqueRenderPass> RenderPass::build(
         auto append_references = [&](const std::vector<AttachmentReference>& offsets) {
             auto current_offset = vk_references.size();
 
-            std::for_each(
-                std::begin(offsets),
-                std::end(offsets),
-                [&](const AttachmentReference& info) {
-                    append_reference(info);
-                }
-            );
+            for (const AttachmentReference& info: offsets) {
+                append_reference(info);
+            }
 
             return std::make_tuple(
                 offsets.size(),

@@ -11,7 +11,7 @@ std::optional<vk::Format> find_stencil_format(
     const mff::vulkan::PhysicalDevice* physical_device
 ) {
     return physical_device->find_supported_format(
-        {vk::Format::eS8Uint},
+        {vk::Format::eS8Uint, vk::Format::eD16UnormS8Uint, vk::Format::eD24UnormS8Uint, vk::Format::eD32SfloatS8Uint},
         vk::FormatFeatureFlagBits::eDepthStencilAttachment
     );
 }

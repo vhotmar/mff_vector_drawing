@@ -15,7 +15,7 @@ class Device;
 
 namespace vma {
 
-struct Allocator;
+class Allocator;
 
 /**
  * Wrap VMA buffer with RAII pattern (it consists of vk::Buffer and the allocated memory)
@@ -80,7 +80,7 @@ using UniqueAllocator = std::unique_ptr<Allocator>;
 /**
  * Wrap VMA Allocator with RAII pattern and add helper functions
  */
-struct Allocator {
+class Allocator {
 public:
     // Disable copying (just move)
     Allocator(const Allocator&) = delete;
@@ -93,13 +93,13 @@ public:
     /**
      * Create new allocator
      */
-    static boost::leaf::result<UniqueAllocator> build(const mff::vulkan::Device* device);
+    static boost::leaf::result<UniqueAllocator> build(const ::mff::vulkan::Device* device);
 
     /**
      * Get the allocator handle
      * @return
      */
-    const VmaAllocator get_handle() const;
+    VmaAllocator get_handle() const;
 
     /**
      * Create buffer based on vk::BufferCreateInfo and VmaAllocationCreateInfo

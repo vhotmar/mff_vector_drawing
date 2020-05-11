@@ -15,7 +15,7 @@ public:
     void transform(const Transform2f& transform);
 
 private:
-    std::vector<Contour> contours_;
+    std::vector<Contour> contours_ = {};
 };
 
 }

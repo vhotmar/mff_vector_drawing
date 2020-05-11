@@ -30,7 +30,7 @@ StrokeResult get_stroke(
     auto flattened_size = (skip_last ? flattened.size() - 1 : flattened.size());
     // helper to get the correct index (including negatie indices)
     auto get_index = [&](std::int32_t index) -> std::size_t {
-        if (index < 0) return (flattened_size - std::abs(index % ((std::int32_t) flattened_size)));
+        if (index < 0) return (flattened_size - std::abs(index % ((std::int32_t) flattened_size))) % flattened_size;
         return index % flattened_size;
     };
 

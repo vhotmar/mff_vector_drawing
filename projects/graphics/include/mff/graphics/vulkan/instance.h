@@ -224,8 +224,8 @@ public:
      */
     static boost::leaf::result<UniqueInstance> build(
         std::optional<ApplicationInfo> info,
-        std::vector<std::string> extensions,
-        std::vector<std::string> layers
+        const std::vector<std::string>& extensions_,
+        const std::vector<std::string>& layers_
     );
 };
 

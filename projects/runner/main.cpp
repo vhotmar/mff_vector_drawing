@@ -90,13 +90,19 @@ boost::leaf::result<void> run(const std::string& file_name) {
         if (!first) {
             scale += 0.01f;
 
+            // enough to render one time
+            canvas::Path2D path = {};
+
+            path.move_to({100, 100});
+            path.line_to({200, 100});
+            path.line_to({200, 200});
+
+            canvas.fill(path, canvas::Canvas::FillInfo{{1.0f, 0.0f, 0.0f, 1.0f}, base_transform});
 
         } else {
-            // enough to render one time
-            canvas::Path2D path;
 
             for (const auto& path: prerendered_paths) {
-                canvas.drawPrerendered(path);
+                //canvas.drawPrerendered(path);
             }
         }
 

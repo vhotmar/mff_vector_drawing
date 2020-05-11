@@ -106,7 +106,7 @@ boost::leaf::result<std::tuple<UniqueDevice, std::vector<SharedQueue>>> Device::
         output_queues.push_back(uniq_queues[index]);
     }
 
-    LEAF_AUTO_TO(device->allocator_, vma::Allocator::build(device.get()));
+    LEAF_AUTO_TO(device->allocator_, ::vma::Allocator::build(device.get()));
     device->semaphores_pool_ = std::make_unique<ObjectPool<mff::vulkan::Semaphore>>(
         [&]() {
             assert(false);
@@ -152,7 +152,7 @@ boost::leaf::result<CommandPool*> Device::get_command_pool(const QueueFamily* qu
     return command_pools_[id].get();
 }
 
-const vma::Allocator* Device::get_allocator() const {
+::vma::Allocator* Device::get_allocator() const {
     return allocator_.get();
 }
 

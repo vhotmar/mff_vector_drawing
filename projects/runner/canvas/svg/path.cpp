@@ -280,12 +280,12 @@ auto parse_path_internal(const std::string_view& input) {
 
 //template <typename Input, typename Error=mff::parser_combinator::error::DefaultError<Input>>
 boost::leaf::result<std::vector<Command>> parse_path(const std::string& input) {
-    //auto result = parse_path_internal<std::string_view>(input);
+    auto result = parse_path_internal(input);
 
-    //if (!result)
+    if (!result)
         return LEAF_NEW_ERROR();
 
-    //return std::move(result->output);
+    return std::move(result->output);
 }
 
 }

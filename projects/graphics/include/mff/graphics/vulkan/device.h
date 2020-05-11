@@ -89,7 +89,7 @@ public:
      */
     vk::Device get_handle() const;
 
-    const vma::Allocator* get_allocator() const;
+    ::vma::Allocator* get_allocator() const;
 
     mff::ObjectPool<mff::vulkan::Fence>* get_fence_pool();
     mff::ObjectPool<mff::vulkan::Semaphore>* get_semaphore_pool();
@@ -125,7 +125,7 @@ private:
     std::vector<std::string> layers_ = {};
     std::vector<std::string> extensions_ = {};
     std::unordered_map<std::uint32_t, UniqueCommandPool> command_pools_ = {};
-    vma::UniqueAllocator allocator_ = nullptr;
+    ::vma::UniqueAllocator allocator_ = nullptr;
     mff::UniqueObjectPool<mff::vulkan::Semaphore> semaphores_pool_ = nullptr;
     mff::UniqueObjectPool<mff::vulkan::Fence> fences_pool_ = nullptr;
 };

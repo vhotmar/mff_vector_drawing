@@ -17,9 +17,12 @@ namespace mff::vulkan {
 
 boost::leaf::result<UniqueInstance> Instance::build(
     std::optional<ApplicationInfo> info,
-    std::vector<std::string> extensions,
-    std::vector<std::string> layers
+    const std::vector<std::string>& extensions_,
+    const std::vector<std::string>& layers_
 ) {
+    std::vector<std::string> extensions = extensions_;
+    std::vector<std::string> layers = layers_;
+
     // we need to initialize the dispatcher to call vulkan functions
     init_dispatcher();
 
@@ -44,16 +47,15 @@ boost::leaf::result<UniqueInstance> Instance::build(
         return true;
     };
 
+    bool enable_debug_messaging = constants::kVULKAN_DEBUG;
+
     if (constants::kVULKAN_DEBUG) {
         bool has_debug_extension = false;
 
         has_debug_extension = add_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME) || has_debug_extension;
         has_debug_extension = add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) || has_debug_extension;
 
-        if (!has_debug_extension) {
-            // we are in debug but extension not found
-            return LEAF_NEW_ERROR(create_instance_error_code::debug_extension_not_found);
-        }
+        enable_debug_messaging = enable_debug_messaging && has_debug_extension;
     }
 
     // check whether we can use the extensions
@@ -96,10 +98,7 @@ boost::leaf::result<UniqueInstance> Instance::build(
         has_debug_layer = has_debug_layer && add_layer("VK_LAYER_LUNARG_core_validation");
         has_debug_layer = has_debug_layer && add_layer("VK_LAYER_GOOGLE_unique_objects");
 
-        if (!has_debug_layer) {
-            // we are in debug but debug layer not found
-            return LEAF_NEW_ERROR(create_instance_error_code::debug_layer_not_found);
-        }
+        enable_debug_messaging = enable_debug_messaging && has_debug_layer;
     }
 
     // check whether we can use the layers
@@ -135,7 +134,7 @@ boost::leaf::result<UniqueInstance> Instance::build(
     struct enable_Instance : public Instance {};
     UniqueInstance instance = std::make_unique<enable_Instance>();
 
-    if (constants::kVULKAN_DEBUG) {
+    if (enable_debug_messaging) {
         vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> chain = {
             create_instance_info,
             get_debug_utils_create_info()
@@ -149,7 +148,7 @@ boost::leaf::result<UniqueInstance> Instance::build(
     // add instance functions to dispatcher
     init_dispatcher(instance->handle_.get());
 
-    if (constants::kVULKAN_DEBUG) {
+    if (enable_debug_messaging) {
         auto create_info = get_debug_utils_create_info();
         LEAF_AUTO_TO(
             instance->debug_utils_messenger_,
@@ -264,8 +263,9 @@ std::optional<vk::Format> PhysicalDevice::find_supported_format(
     vk::FormatFeatureFlags features,
     vk::ImageTiling tiling
 ) const {
-    auto i = ranges::find_if(
-        candidates,
+    auto i = std::find_if(
+        std::begin(candidates),
+        std::end(candidates),
         [&](const auto& format) {
             auto props = handle_.getFormatProperties(format);
 
@@ -281,7 +281,7 @@ std::optional<vk::Format> PhysicalDevice::find_supported_format(
         }
     );
 
-    if (i != ranges::end(candidates)) return *i;
+    if (i != std::end(candidates)) return *i;
 
     return std::nullopt;
 }

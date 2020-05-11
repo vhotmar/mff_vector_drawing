@@ -24,8 +24,8 @@ public:
     void transform(const Transform2f& transform);
 
 private:
-    Outline outline_;
-    Contour current_contour_;
+    Outline outline_ = {};
+    Contour current_contour_ = {};
 
     void end_current_contour();
 };

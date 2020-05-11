@@ -19,8 +19,8 @@ enum class PointFlag : std::uint8_t {
  * One concrete path
  */
 struct Contour {
-    std::vector<mff::Vector2f> points;
-    std::vector<PointFlag> point_flags;
+    std::vector<mff::Vector2f> points = {};
+    std::vector<PointFlag> point_flags = {};
     // bounds?
     bool closed = false;
 

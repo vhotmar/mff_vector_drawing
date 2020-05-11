@@ -2,6 +2,7 @@
 #include "vk_mem_alloc.h"
 
 #include <mff/graphics/memory.h>
+#include <mff/graphics/vulkan/device.h>
 
 namespace vma {
 
@@ -29,7 +30,7 @@ Allocator::~Allocator() {
     vmaDestroyAllocator(handle_);
 }
 
-boost::leaf::result<UniqueAllocator> Allocator::build(const mff::vulkan::Device* device) {
+boost::leaf::result<UniqueAllocator> Allocator::build(const ::mff::vulkan::Device* device) {
     struct enable_Allocator : public Allocator {};
     std::unique_ptr<Allocator> allocator = std::make_unique<enable_Allocator>();
 
@@ -46,7 +47,7 @@ boost::leaf::result<UniqueAllocator> Allocator::build(const mff::vulkan::Device*
     return std::move(allocator);
 }
 
-const VmaAllocator Allocator::get_handle() const {
+VmaAllocator Allocator::get_handle() const {
     return handle_;
 }
 

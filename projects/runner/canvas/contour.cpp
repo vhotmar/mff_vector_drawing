@@ -2,6 +2,7 @@
 #include <cmath>
 
 #include "./contour.h"
+#include "../renderer2.h"
 
 namespace canvas {
 
@@ -109,12 +110,13 @@ const Segment& Contour::ContourSegmentView::read() const {
 bool Contour::ContourSegmentView::equal(ranges::default_sentinel_t) const {
     bool include_close_segment = contour_->closed && !ignore_close_segment_;
 
-    if (!include_close_segment) return index_ >= (contour_->size() + 1);
-    return index_ >= (contour_->size() + 2);
+    return ((!include_close_segment && index_ >= (contour_->size() - 1)) || index_ >= contour_->size());
 }
 
 void Contour::ContourSegmentView::next() {
+    logger::main->info("from_point index {} size {}", index_, contour_->size());
     auto from_point = contour_->points[index_ - 1];
+    logger::main->info("ok");
 
     // closing part of contour
     if (index_ == contour_->size()) {

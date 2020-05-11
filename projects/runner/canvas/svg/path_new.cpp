@@ -297,12 +297,12 @@ namespace canvas::svg {
 
 //template <typename Input, typename Error=mff::parser_combinator::error::DefaultError<Input>>
     boost::leaf::result<std::vector<Command>> parse_path(const std::string& input) {
-        //auto result = parse_path_internal<std::string_view>(input);
+        auto result = parse_path_internal<std::string_view>(input);
 
-        //if (!result)
-        return LEAF_NEW_ERROR();
+        if (!result)
+            return LEAF_NEW_ERROR();
 
-        //return std::move(result->output);
+        return std::move(result->output);
     }
 
 }
