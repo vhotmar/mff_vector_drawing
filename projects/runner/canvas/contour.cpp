@@ -130,6 +130,9 @@ void Contour::ContourSegmentView::next() {
     auto get_next = [&]() -> std::tuple<bool, mff::Vector2f> {
         auto index = index_;
         index_++;
+
+        if (index_ >= contour_->size()) return std::make_tuple(true, mff::Vector2f{0.0f, 0.0f});
+
         return std::make_tuple(contour_->point_flags[index] == PointFlag::CONCRETE, contour_->points[index]);
     };
 
