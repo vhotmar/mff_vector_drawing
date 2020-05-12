@@ -35,7 +35,7 @@ Příklady:
 Původně jsem chtěl založit integraci s Vulkan API na knihovně již existující ["vulkano"](https://github.com/vulkano-rs/vulkano)
 a postupem času toto řešení přizpůsobovat mým potřebám. Nakonec se úkazalo, že to nebylo nejlepší rozhodnutí, neboť tato
 knihovna není pouze low-level wrapper nad Vulkan API, ale poskytuje i high-level API. Např. pro synchronizaci "Vulkan
-Commands" (pomocí nádstavby zavné `GpuFutures`). Samozřejmě by se tato nádstavba dobře používala, ale byla by složitá na
+Commands" (pomocí nádstavby zvané `GpuFutures`). Samozřejmě by se tato nádstavba dobře používala, ale byla by složitá na
 implementaci a již nesplňovala jednu podmínku specifikace - "vyzkoušení low-level API Vulkan". Tedy vytvořil jsem pouze
 jednoduché wrappery kolem Vulkan API pro vytváření `Instance`, `Device`, `Queue`, `RenderPass` a dalších objektů.
 Pak i wrappery pro `Image` a `Buffer` (pomocí [VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)).
@@ -57,11 +57,7 @@ elementy (a protože reprezentují `path` elementy, tak mohou reprezentovat i `r
 `canvas::Path2D` je složený z `canvas::Contour` (křivek) a ty jsou složeny ze základních bloků: `canvas::Segment` (úsečka,
 kvadratická a kubická křivka). Pomocí těchto bloků se dá do libovolné přesnosti aproximovat libovolný tvar.
 
-<<<<<<< HEAD
 Při vykreslování jednotlivých `canvas::Contour` se tyto křivky rozdělí na základní bloky `canvas::Segment` a ty se
-=======
-Při vykreslování jednotlivých `canvas::Contour` se tato křivka rozdělí na základní bloky `canvas::Segment` a ty se
->>>>>>>  update readme
 převedou na jednoduchou aproximaci pomocí úseček (tedy i oblouk je aproximován úsečkami). Tento vzniklý útvar se pak již
 velice jednoduše vyplní (pomocí [triangulace](https://en.wikipedia.org/wiki/Polygon_triangulation)) a nebo převede na
 "obtaženou" křivku. Tyto objekty se pak jednoduše vykreslí pomocí `projects/runner/renderer`.
