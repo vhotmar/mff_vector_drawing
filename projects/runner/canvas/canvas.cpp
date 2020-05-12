@@ -102,3 +102,5 @@ Canvas::PrerenderedPath Canvas::prerenderStroke(canvas::Path2D& path, const Canv
 
     return result;
 }
+
+}
