@@ -59,7 +59,6 @@ public:
     const Device* get_device() const;
     vk::ImageUsageFlags get_usage() const;
     ImageDimensions get_dimensions() const;
-    std::uintptr_t get_key() const;
 
     static boost::leaf::result<UniqueUnsafeImage> build(
         const Device* device,

@@ -4,12 +4,11 @@
 #include "./stroke.h"
 
 #include "./outline.h"
-#include "../renderer2.h"
 
 namespace canvas {
 
-// we do stroking manually (better way would be to use already existing splitting into contours and
-// segments)
+// we do stroking manually
+// TODO: create strokes using offseting Contours
 StrokeResult get_stroke(
     const std::vector<mff::Vector2f>& flattened,
     const StrokeStyle& style,
@@ -67,12 +66,14 @@ StrokeResult get_stroke(
             }
 
             if (std::holds_alternative<LineCap_::Round>(style.line_cap)) {
+                // calculate the angle from and to which generate half circle
                 std::float_t step = M_PI / (2.0 * half_width);
                 std::float_t beta = std::acos(direction[0]) + M_PI_2;
                 if (direction[1] < 0.0f) beta = M_PI - beta;
                 std::float_t beta_to = beta + M_PI; // half circl
 
                 beta += step;
+                // add the half circle
                 while (beta < beta_to) {
                     add_vert({std::cos(beta) * half_width + p0[0], std::sin(beta) * half_width + p0[1]});
                     beta += step;
@@ -80,6 +81,7 @@ StrokeResult get_stroke(
 
                 std::uint32_t after_add_vertices_ix = result_vertices.size();
 
+                // generate the indices
                 for (std::uint32_t indice = curr_vertices_ix; indice < after_add_vertices_ix; indice++) {
                     add_indices_triangle(after_add_vertices_ix + 1, indice, indice + 1);
                 }
@@ -112,12 +114,14 @@ StrokeResult get_stroke(
             curr_vertices_ix = result_vertices.size();
 
             if (std::holds_alternative<LineCap_::Round>(style.line_cap)) {
+                // calculate the angle from and to which generate half circle
                 std::float_t step = M_PI / (2.0 * half_width);
                 std::float_t beta = std::acos(normal[0]) + M_PI_2;
                 if (normal[1] < 0.0f) beta = M_PI - beta;
                 std::float_t beta_to = beta - M_PI; // half circl
 
                 beta -= step;
+                // add the half circle
                 while (beta > beta_to) {
                     add_vert({std::cos(beta) * half_width + p0[0], std::sin(beta) * half_width + p0[1]});
                     beta -= step;
@@ -125,6 +129,7 @@ StrokeResult get_stroke(
 
                 std::uint32_t after_add_vertices_ix = result_vertices.size();
 
+                // generate the indices
                 for (std::uint32_t indice = curr_vertices_ix - 1; indice < (after_add_vertices_ix - 1); indice++) {
                     add_indices_triangle(indice + 1, indice, curr_vertices_ix - 2);
                 }

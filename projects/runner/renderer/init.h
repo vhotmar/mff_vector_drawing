@@ -10,13 +10,36 @@
 #include "./vulkan_engine.h"
 #include "./vulkan_presenter.h"
 
+/**
+ * Init everything for rendering
+ * - Vulkan Engine and Presenter
+ * - Renderer Context, Surface and the Renderer
+ */
 class RendererInit {
 public:
+    /**
+     * Get the initiated renderer
+     * @return
+     */
     Renderer* get_renderer();
+
+    /**
+     * Get dimensions of framebuffer
+     * @return
+     */
     mff::Vector2ui get_dimensions();
 
+    /**
+     * Present buffer from RendererScreen to real screen
+     * @return
+     */
     boost::leaf::result<void> present();
 
+    /**
+     * Init the renderer
+     * @param window
+     * @return
+     */
     static boost::leaf::result<std::unique_ptr<RendererInit>> build(
         const std::shared_ptr<mff::window::Window>& window
     );

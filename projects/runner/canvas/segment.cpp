@@ -2,6 +2,8 @@
 
 namespace canvas {
 
+// Legendre-Gauss coefficients
+// https://pomax.github.io/bezierinfo/legendre-gauss.html
 std::array<std::double_t, 24> LG_times = {
     -0.0640568928626056260850430826247450385909,
     0.0640568928626056260850430826247450385909,
@@ -101,6 +103,9 @@ mff::Vector2f Segment::derivative(std::float_t t) const {
 
 std::float_t Segment::length() const {
     if (is_line()) return get_baseline().vector().norm();
+
+    // Using Legendre-Gauss quadrature
+    // https://pomax.github.io/bezierinfo/#arclength
 
     std::double_t z = 0.5f;
     std::double_t sum = 0.0f;
@@ -269,6 +274,8 @@ void Segment::offset(std::float_t dist, const Segment::SegmentHandler& handler) 
         return std::make_tuple(l1.from, cp, l2.to);
     };
 
+    // for now provide simple one time split (could be done to arbitary precision)
+
     auto result = std::visit(
         mff::overloaded{
             [&](const Kind_::Line& line) -> Segment {
@@ -344,8 +351,8 @@ Segment Segment::cubic(const LineSegment2f& line, const LineSegment2f& ctrl) {
     return Segment{Kind_::Cubic{line, ctrl}};
 }
 
-// https://pomax.github.io/bezierinfo/#circles_cubic
 Segment Segment::arc(std::float_t phi) {
+    // https://pomax.github.io/bezierinfo/#circles_cubic
     auto f = std::tan(phi / 4.0f) * (4.0f / 3.0f);
     auto sin_phi = std::sin(phi);
     auto cos_phi = std::cos(phi);

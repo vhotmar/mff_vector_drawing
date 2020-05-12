@@ -39,19 +39,49 @@ struct PushConstants {
  */
 class RendererContext {
 public:
+    /**
+     * Build the renderer context
+     * @param engine on which vulkan engine
+     * @param color_format which color format to use
+     * @return
+     */
     static boost::leaf::result<std::unique_ptr<RendererContext>> build(
         VulkanEngine* engine,
         vk::Format color_format
     );
 
+    /**
+     * Get the main render pass
+     * @return
+     */
     const mff::vulkan::RenderPass* get_renderpass() const;
+
+    /**
+     * Get device used by RendererContext
+     * @return
+     */
     mff::vulkan::Device* get_device();
+
+    /**
+     * Get pipeline layout
+     * @return
+     */
     vk::PipelineLayout get_pipeline_layout();
+
+    /**
+     * Get the color attachment format
+     * @return
+     */
     vk::Format get_color_attachment_format() const;
+
+    /**
+     * Get the stencil attachment format
+     * @return
+     */
     vk::Format get_stencil_attachment_format() const;
 
     /**
-     * Get pipeliene which will write over data already specified in image
+     * Get pipeliene which will write over data already specified in image (without cleaning first)
      * @return
      */
     vk::Pipeline get_over_pipeline();
@@ -59,13 +89,12 @@ public:
 private:
     RendererContext() = default;
 
+    // Helper functions
     boost::leaf::result<mff::vulkan::UniqueRenderPass> build_render_pass(
         vk::AttachmentLoadOp load_op,
         vk::AttachmentLoadOp stencil_load_op
     );
-
     boost::leaf::result<void> build_pipeline_layout();
-
     boost::leaf::result<void> build_pipelines();
 
     // Most of our pipelines are the much same except few informations
@@ -110,21 +139,26 @@ private:
         bool blend_enabled = true;
     };
 
+    // Helper function
     boost::leaf::result<vk::UniquePipeline> build_pipeline(BuildPipelineInfo info);
 
     VulkanEngine* engine_;
+
+    /*
+     * The main render pass with which we render to surface
+     */
     mff::vulkan::UniqueRenderPass render_pass_main_ = nullptr;
-    mff::vulkan::UniqueRenderPass render_pass_clear_stencil_ = nullptr;
-    mff::vulkan::UniqueRenderPass render_pass_clear_all_ = nullptr;
 
     vk::UniquePipelineLayout pipeline_layout_;
 
+    /**
+     * Same as render passes - future proofing
+     */
     vk::UniquePipeline pipeline_over_;
-    vk::UniquePipeline pipeline_sub_;
-    vk::UniquePipeline pipeline_clear_;
 
-    vk::UniquePipeline pipeline_clipping_;
-
+    // used color format
     vk::Format color_format_;
+
+    // used stencil format
     vk::Format stencil_format_;
 };

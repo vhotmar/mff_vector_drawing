@@ -23,12 +23,46 @@ public:
         mff::Vector2ui dimensions
     );
 
+    /**
+     * Get renderer context used by this renderer surface
+     * @return
+     */
     RendererContext* get_context() const;
+
+    /**
+     * Get color image used
+     * @return
+     */
     const mff::vulkan::Image* get_color_image() const;
+
+    /**
+     * Get stencil image used
+     * @return
+     */
     const mff::vulkan::Image* get_stencil_image() const;
+
+    /**
+     * Get the framebuffer
+     * @return
+     */
     const mff::vulkan::Framebuffer* get_framebuffer() const;
+
+    /**
+     * Get width of renderer surface
+     * @return
+     */
     std::uint32_t get_width() const;
+
+    /**
+     * Get height of renderer surface
+     * @return
+     */
     std::uint32_t get_height() const;
+
+    /**
+     * Get dimensions in vector
+     * @return
+     */
     mff::Vector2ui get_dimensions() const;
 
 private:

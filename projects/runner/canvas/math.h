@@ -85,16 +85,59 @@ struct Transform2f {
     mff::Matrix2f transform;
     mff::Vector2f translation;
 
+    /**
+     * The identity transform
+     */
     Transform2f();
+
+    /**
+     * Create transform from matrix and translation
+     * @param transform
+     * @param translation
+     */
     Transform2f(const mff::Matrix2f& transform, const mff::Vector2f& translation);
 
+    /**
+     * Create transform from translation
+     * @param translation
+     * @return
+     */
     static Transform2f from_translate(const mff::Vector2f& translation);
+
+    /**
+     * Create transform from scale (scale based on Vector2f coordinates)
+     * @param scale
+     * @return
+     */
     static Transform2f from_scale(const mff::Vector2f& scale);
+
+    /**
+     * Create rotation transform
+     * @param angle
+     * @return
+     */
     static Transform2f from_rotation(std::float_t angle);
+
+    /**
+     * Get identity transform
+     * @return
+     */
     static Transform2f identity();
 
+    /**
+     * Translate the current transform
+     * @param translation
+     * @return
+     */
     Transform2f translate(const mff::Vector2f& translation) const;
+
+    /**
+     * Get the inverse of current transform
+     * @return
+     */
     Transform2f inverse() const;
+
+    // Apply the trasform on other object
     mff::Vector2f apply(const mff::Vector2f& v) const;
     Transform2f apply(const Transform2f& t) const;
     LineSegment2f apply(const LineSegment2f& l) const;

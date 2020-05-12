@@ -78,6 +78,8 @@ Path2D Path2D::from_svg_commands(std::vector<svg::Command> commands) {
         return result;
     };
 
+    // this is pretty straightforward, only special thing is that we need to account for commands
+    // which are using relative position and not absolute position
     for (const auto& command: commands) {
         std::visit(
             mff::overloaded{

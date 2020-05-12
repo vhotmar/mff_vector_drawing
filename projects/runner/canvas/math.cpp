@@ -64,6 +64,7 @@ Transform2f Transform2f::from_rotation(std::float_t angle) {
 }
 
 mff::Vector2f LineSegment2f::vector() const {
+    // get vector represented by this line segment
     return to - from;
 }
 
@@ -90,6 +91,7 @@ std::float_t LineSegment2f::inner_angle_between(const LineSegment2f& other) cons
     auto v1 = vector();
     auto v2 = other.vector();
 
+    // basic cosine law
     return std::acos(v1.dot(v2) / (v1.norm() * v2.norm()));
 }
 

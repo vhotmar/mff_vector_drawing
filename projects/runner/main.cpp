@@ -28,35 +28,24 @@ struct RunOptions {
     float translate_y;
 };
 
-boost::leaf::result<void> run(const RunOptions& ro) {
-    mff::logger::vulkan = mff::logger::setup_vulkan_logging();
-    mff::logger::window = mff::logger::setup_window_logging();
-    mff::window::EventLoop event_loop;
+/**
+ * Read an SVG file and prerender it (create all information needed for immediate render)
+ * @param file_name
+ * @param base_transform
+ * @return
+ */
+std::vector<canvas::Canvas::PrerenderedPath> prerender_svg_file(
+    const std::string& file_name,
+    const canvas::Transform2f base_transform
+) {
+    auto svg_file = mff::read_file(file_name);
+    std::string svg_file_string(svg_file.begin(), svg_file.end());
 
-    auto tiger_svg = mff::read_file(ro.file_name);
-    std::string tiger_svg_string(tiger_svg.begin(), tiger_svg.end());
-
-    auto tiger_svg_paths = canvas::svg::to_paths(tiger_svg_string);
-
-    std::uint32_t kWIDTH = ro.width;
-    std::uint32_t kHEIGHT = ro.height;
-
-    LEAF_AUTO(
-        window, mff::window::glfw::WindowBuilder()
-        .with_size({kWIDTH, kHEIGHT})
-        .with_title("SVG renderer app")
-        .build(&event_loop));
-
-    LEAF_AUTO(render_init, RendererInit::build(window));
-
-    canvas::Transform2f base_transform = (canvas::Transform2f::from_translate({-1, -1})
-        * canvas::Transform2f::from_scale(render_init->get_dimensions().cast<std::float_t>()).inverse())
-        * canvas::Transform2f::from_translate({ro.translate_x, ro.translate_y})
-        * canvas::Transform2f::from_scale({ro.scale, ro.scale});
+    auto svg_file_paths = canvas::svg::to_paths(svg_file_string);
 
     std::vector<canvas::Canvas::PrerenderedPath> prerendered_paths = {};
 
-    for (const auto& item: tiger_svg_paths) {
+    for (const auto& item: svg_file_paths) {
         auto[path, state] = item;
 
         auto prerender_fill = [&]() {
@@ -87,31 +76,61 @@ boost::leaf::result<void> run(const RunOptions& ro) {
         }
     }
 
+    return prerendered_paths;
+}
+
+/**
+ *
+ * @param ro
+ * @return
+ */
+boost::leaf::result<void> run(const RunOptions& ro) {
+    mff::window::EventLoop event_loop;
+
+    std::uint32_t kWIDTH = ro.width;
+    std::uint32_t kHEIGHT = ro.height;
+
+    // init the window
+    LEAF_AUTO(
+        window, mff::window::glfw::WindowBuilder()
+        .with_size({kWIDTH, kHEIGHT})
+        .with_title("SVG renderer app")
+        .build(&event_loop));
+
+    // Init all utils needed for render
+    LEAF_AUTO(render_init, RendererInit::build(window));
+
+    // Vulkan coordinates are (0,0) in center of screen se at first we will move everything to
+    // the upper left corner
+    canvas::Transform2f base_transform = (canvas::Transform2f::from_translate({-1, -1})
+        // then scale everything by framebuffer size (could be by window size...)
+        * canvas::Transform2f::from_scale(render_init->get_dimensions().cast<std::float_t>()).inverse())
+        // move everything as specified in command arguments
+        * canvas::Transform2f::from_translate({ro.translate_x, ro.translate_y})
+            // scale everything
+        * canvas::Transform2f::from_scale({ro.scale, ro.scale});
+
+    // Init the canvas on which we will render
     canvas::Canvas canvas(render_init->get_renderer());
 
-    bool first = true;
-    float scale = -0.4f;
+    auto prerendered_paths = prerender_svg_file(ro.file_name, base_transform);
 
+    // now we will render everything in canvas
+    for (const auto& path: prerendered_paths) {
+        canvas.drawPrerendered(path);
+    }
 
     auto draw = [&]() -> boost::leaf::result<void> {
-        // draw commands
-        if (!first) {
-            scale += 0.01f;
-        } else {
-            for (const auto& path: prerendered_paths) {
-                canvas.drawPrerendered(path);
-            }
-        }
-
+        // and now we will just present the canvas to user
         LEAF_CHECK(render_init->present());
-
-        first = false;
 
         return {};
     };
 
+    // run in event loop
     event_loop.run(
         [&](auto event) {
+            // check if we should quit
             if (auto window_event = std::get_if<mff::window::events::WindowEvent>(&event)) {
                 if (std::holds_alternative<mff::window::events::window::CloseRequested>(window_event->event)) {
                     logger::main->info("Quitting application");
@@ -119,69 +138,91 @@ boost::leaf::result<void> run(const RunOptions& ro) {
                 }
             }
 
+            // check if all events polled
             if (std::holds_alternative<mff::window::events::PollingCompleted>(event)) {
                 auto res = draw();
 
                 if (!res) return mff::window::ExecutionControl::Terminate;
             }
 
-            return mff::window::ExecutionControl::Poll;
+            return mff::window::ExecutionControl::Wait;
         }
     );
 
     return {};
 }
 
-int main(int argc, char* argv[]) {
+/**
+ * Parse command line options
+ * @param argc
+ * @param argv
+ * @return
+ */
+std::optional<RunOptions> parse_command_line_options(int argc, char** argv) {
     namespace po = boost::program_options;
 
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "produce help message")
-        ("width,w", po::value<int>()->default_value(800), "set width of the window")
-        ("height,h", po::value<int>()->default_value(600), "set height of the window")
-        ("scale,s", po::value<float>()->default_value(1.0f), "set the scale of displayed image")
-        ("translate_x,tx", po::value<float>()->default_value(0.0f), "set x translation of displayed image")
-        ("translate_y,ty", po::value<float>()->default_value(0.0f), "set y translation of displayed image")
-        ("file,f", po::value<std::string>(), "the file to display");
+    RunOptions result;
 
-    po::positional_options_description p;
-    p.add("file", 1);
-    po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
-    po::notify(vm);
+    try {
+        po::options_description desc("Allowed options");
+        desc.add_options()
+            ("help", "produce help message")
+            ("width,w", po::value<int>(&result.width)->default_value(800), "set width of the window")
+            ("height,h", po::value<int>(&result.height)->default_value(600), "set height of the window")
+            ("scale,s", po::value<float>(&result.scale)->default_value(1.0f), "set the scale of displayed image")
+            (
+                "translate_x,tx",
+                po::value<float>(&result.translate_x)->default_value(0.0f),
+                "set x translation of displayed image"
+            )
+            (
+                "translate_y,ty",
+                po::value<float>(&result.translate_y)->default_value(0.0f),
+                "set y translation of displayed image"
+            )
+            ("file,f", po::value<std::string>(&result.file_name)->required(), "the file to display");
 
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return 0;
+        po::positional_options_description p;
+        p.add("file", 1);
+        po::variables_map vm;
+        po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return std::nullopt;
+        }
+
+        po::notify(vm);
+
+        if (!std::filesystem::exists(result.file_name)) {
+            std::cout << fmt::format("Specified file \"{}\" does not exists", result.file_name) << std::endl;
+            return std::nullopt;
+        }
+    } catch (std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return std::nullopt;
+    } catch (...) {
+        std::cerr << "Unknown error!" << "\n";
+        return std::nullopt;
     }
 
-    if (!vm.count("file")) {
-        std::cout << "Please specify name of file you want to render" << std::endl;
-        std::cout << desc << std::endl;
+    return result;
+}
 
-        return -1;
-    }
+int main(int argc, char* argv[]) {
+    // setup logging
+    mff::logger::vulkan = mff::logger::setup_vulkan_logging();
+    mff::logger::window = mff::logger::setup_window_logging();
 
-    std::string file_name(vm["file"].as<std::string>());
+    // parse options
+    auto options = parse_command_line_options(argc, argv);
 
-    if (!std::filesystem::exists(file_name)) {
-        std::cout << fmt::format("Specified file \"{}\" does not exists", file_name) << std::endl;
-        return -1;
-    }
+    if (!options) return -1;
 
-    RunOptions ro = {
-        file_name,
-        vm["width"].as<int>(),
-        vm["height"].as<int>(),
-        vm["scale"].as<float>(),
-        vm["translate_x"].as<float>(),
-        vm["translate_x"].as<float>()
-    };
-
+    // run everything in boost leaf context
     return boost::leaf::try_handle_all(
         [&]() -> boost::leaf::result<int> {
-            LEAF_CHECK(run(ro));
+            LEAF_CHECK(run(options.value()));
 
             return 0;
         },

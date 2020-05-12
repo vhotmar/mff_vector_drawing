@@ -16,12 +16,21 @@ std::optional<vk::Format> find_stencil_format(
     );
 }
 
+/**
+ * Build the description for this vertex
+ * @param binding on which position it should be bound in shader
+ * @return
+ */
 vk::VertexInputBindingDescription Vertex::get_binding_description(std::uint32_t binding) {
     vk::VertexInputBindingDescription bindingDescription(binding, sizeof(Vertex), vk::VertexInputRate::eVertex);
 
     return bindingDescription;
 }
 
+/**
+ * Get the description of "inputs" for shaders
+ * @return
+ */
 std::array<vk::VertexInputAttributeDescription, 1> Vertex::get_attribute_descriptions() {
     return {
         vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
@@ -40,16 +49,10 @@ boost::leaf::result<std::unique_ptr<RendererContext>> RendererContext::build(
     LEAF_CHECK_OPTIONAL(stencil_format, find_stencil_format(engine->get_device()->get_physical_device()));
     result->stencil_format_ = stencil_format;
 
+    // build render passes and pipeines
     LEAF_AUTO_TO(
         result->render_pass_main_,
         result->build_render_pass(vk::AttachmentLoadOp::eLoad, vk::AttachmentLoadOp::eLoad));
-    LEAF_AUTO_TO(
-        result->render_pass_clear_stencil_,
-        result->build_render_pass(vk::AttachmentLoadOp::eLoad, vk::AttachmentLoadOp::eClear));
-    LEAF_AUTO_TO(
-        result->render_pass_clear_all_,
-        result->build_render_pass(vk::AttachmentLoadOp::eClear, vk::AttachmentLoadOp::eClear));
-
 
     LEAF_CHECK(result->build_pipeline_layout());
     LEAF_CHECK(result->build_pipelines());
@@ -77,6 +80,8 @@ boost::leaf::result<mff::vulkan::UniqueRenderPass> RendererContext::build_render
     vk::AttachmentLoadOp load_op,
     vk::AttachmentLoadOp stencil_load_op
 ) {
+    // we will use two attachments (for now we are using only color but in future stencil will be
+    // needed)
     return mff::vulkan::RenderPassBuilder()
         .add_attachment(
             "color",
@@ -139,23 +144,17 @@ boost::leaf::result<void> RendererContext::build_pipelines() {
     over_info.stencil_op = stencil_op_state;
     LEAF_AUTO_TO(pipeline_over_,build_pipeline(over_info));
 
-    BuildPipelineInfo subtract_info = over_info;
-    subtract_info.blend_op = vk::BlendOp::eSubtract;
-    LEAF_AUTO_TO(pipeline_sub_,build_pipeline(subtract_info));
-
-    BuildPipelineInfo clear_info = over_info;
-    clear_info.blend_enabled = false;
-
     return {};
 }
 
 boost::leaf::result<vk::UniquePipeline> RendererContext::build_pipeline(BuildPipelineInfo info) {
+    // most of this is basic setting for pipelines
     vk::PipelineRasterizationStateCreateInfo rasterization_info(
         {},
-        false,
-        false,
+        false, // no depth calmping
+        false, // no discarding
         vk::PolygonMode::eFill,
-        vk::CullModeFlagBits::eNone,
+        vk::CullModeFlagBits::eNone, // display clockwise and counter-clockwise polygons
         vk::FrontFace::eClockwise,
         false,
         {},
@@ -167,7 +166,7 @@ boost::leaf::result<vk::UniquePipeline> RendererContext::build_pipeline(BuildPip
 
     vk::PipelineColorBlendAttachmentState blend_attachment(
         info.blend_enabled,
-        vk::BlendFactor::eSrcAlpha,
+        vk::BlendFactor::eSrcAlpha, // use alpha blending
         vk::BlendFactor::eOneMinusSrcAlpha,
         info.blend_op,
         vk::BlendFactor::eOne,
@@ -187,11 +186,11 @@ boost::leaf::result<vk::UniquePipeline> RendererContext::build_pipeline(BuildPip
 
     vk::PipelineDepthStencilStateCreateInfo depth_stencil_info(
         {},
-        false,
+        false, // disable depth testing (for now we are using only 2D)
         false,
         vk::CompareOp::eAlways,
         false,
-        false, // TODO: find why
+        false, // TODO: find why not working with enabled
         info.stencil_op,
         info.stencil_op
     );

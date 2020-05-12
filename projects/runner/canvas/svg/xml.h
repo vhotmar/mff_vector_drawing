@@ -54,6 +54,11 @@ struct DrawState {
     DrawStatePaintFirst paint_first = DrawStatePaintFirst::Fill;
 };
 
+/**
+ * Parse SVG string to paths
+ * @param data
+ * @return
+ */
 std::vector<std::tuple<Path2D, DrawState>> to_paths(const std::string& data);
 
 }

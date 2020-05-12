@@ -3,6 +3,7 @@
 boost::leaf::result<std::unique_ptr<RendererInit>> RendererInit::build(
     const std::shared_ptr<mff::window::Window>& window
 ) {
+    logger::main->debug("Building RenderInit");
     struct enable_RenderInit : public RendererInit {};
     std::unique_ptr<RendererInit> result = std::make_unique<enable_RenderInit>();
 
@@ -20,6 +21,8 @@ boost::leaf::result<std::unique_ptr<RendererInit>> RendererInit::build(
         result->renderer_,
         Renderer::build(result->surface_.get(), result->engine_->get_queues().graphics_queue));
 
+    // the only special thing here is recording the commands to copy the RendererScreen buffer to
+    // the screen from presenter (so user can see the resulting image)
     LEAF_CHECK(
         result
             ->presenter_
@@ -39,10 +42,12 @@ mff::Vector2ui RendererInit::get_dimensions() {
 boost::leaf::result<void> RendererInit::present() {
     LEAF_AUTO(fresh, presenter_->draw());
 
+    // if is swapchain invalidated rebuild the commands (so they refer to the new swapchain)
     if (!fresh) {
         LEAF_CHECK(presenter_->build_commands(surface_->get_color_image(), presenter_->get_dimensions()));
     }
 
+    // wait for completion
     engine_->get_device()->get_handle().waitIdle();
 
     return {};

@@ -154,10 +154,6 @@ ImageDimensions UnsafeImage::get_dimensions() const {
     return dimensions_;
 }
 
-std::uintptr_t UnsafeImage::get_key() const {
-    return reinterpret_cast<std::uintptr_t>((VkImage) handle_);
-}
-
 vk::ImageView UnsafeImageView::get_handle() const {
     return handle_.get();
 }

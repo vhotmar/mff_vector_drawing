@@ -39,6 +39,13 @@ struct StrokeResult {
     std::vector<std::uint32_t> indices;
 };
 
+/**
+ * Get the final shape of stroke for flattened curve
+ * @param flattened
+ * @param style
+ * @param loop
+ * @return
+ */
 StrokeResult get_stroke(const std::vector<mff::Vector2f>& flattened, const StrokeStyle& style, bool loop = false);
 
 }

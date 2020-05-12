@@ -1,4 +1,5 @@
 #include "./vulkan_engine.h"
+#include "../utils/logger.h"
 
 #include <mff/algorithms.h>
 
@@ -65,6 +66,7 @@ bool is_device_suitable(
     const mff::vulkan::Surface* surface,
     const std::vector<std::string>& required_extensions
 ) {
+    // we want discrete GPU supporting all queues and extensions and providing Swapchain
     bool is_discrete = physical_device->get_type() == vk::PhysicalDeviceType::eDiscreteGpu;
     bool has_queue_families = find_queue_families(physical_device, surface).is_complete();
     bool required_extensions_supported = physical_device->are_extensions_supported(required_extensions);
@@ -89,6 +91,7 @@ bool is_device_suitable(
 boost::leaf::result<std::unique_ptr<VulkanEngine>> VulkanEngine::build(
     const std::shared_ptr<mff::window::Window>& window
 ) {
+    logger::main->debug("Building VulkanEngine");
     struct enable_VulkanEngine : public VulkanEngine {};
     std::unique_ptr<VulkanEngine> engine = std::make_unique<enable_VulkanEngine>();
 
@@ -98,6 +101,7 @@ boost::leaf::result<std::unique_ptr<VulkanEngine>> VulkanEngine::build(
                  mff::vulkan::Instance::build(std::nullopt, window->get_required_extensions(), {}));
     LEAF_AUTO_TO(engine->surface_, mff::vulkan::Surface::build(window, engine->instance_.get()));
 
+    // find optimal physical device
     engine->physical_device_ = *(mff::find_if(
         engine->instance_->get_physical_devices(),
         [&](auto device) { return is_device_suitable(device, engine->surface_.get(), {}); }
@@ -105,6 +109,7 @@ boost::leaf::result<std::unique_ptr<VulkanEngine>> VulkanEngine::build(
 
     auto queue_indices = find_queue_families(engine->physical_device_, engine->surface_.get());
 
+    // create device and queues
     LEAF_AUTO(
         device_result,
         mff::vulkan::Device::build(

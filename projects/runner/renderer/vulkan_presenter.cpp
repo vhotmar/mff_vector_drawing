@@ -1,6 +1,7 @@
 #include "./vulkan_presenter.h"
 
 boost::leaf::result<std::unique_ptr<VulkanPresenter>> VulkanPresenter::build(VulkanEngine* engine) {
+    logger::main->debug("Building VulkanPresenter");
     struct enable_VulkanPresenter : public VulkanPresenter {};
     std::unique_ptr<VulkanPresenter> result = std::make_unique<enable_VulkanPresenter>();
 
@@ -9,6 +10,7 @@ boost::leaf::result<std::unique_ptr<VulkanPresenter>> VulkanPresenter::build(Vul
     result->device_ = engine->get_device();
     result->surface_ = engine->get_surface();
 
+    // allocate semaphores used for drawing
     LEAF_AUTO_TO(result->present_end_semaphore_, mff::vulkan::Semaphore::build(engine->get_device()));
     LEAF_AUTO_TO(result->draw_end_semaphore_, mff::vulkan::Semaphore::build(engine->get_device()));
 
@@ -30,10 +32,15 @@ boost::leaf::result<void> VulkanPresenter::build_commands(
     mff::Vector2ui dimensions
 ) {
     std::size_t index = 0;
+    // we need to do that for all command buffers (for all swapchain screens)
     for (const auto& alloc: command_buffer_allocations_) {
+        // for this we can use the incomplete Vulkan Builder
         LEAF_AUTO(builder, mff::vulkan::UnsafeCommandBufferBuilder::from_buffer(alloc->get_handle(), {}));
 
         auto destination = swapchain_images_[index]->get_image_impl();
+
+        // and what we need to do is to convert the images to correct formats, copy the image
+        // and transform the images to original formats
 
         // TODO: should be automated using SyncCommandBufferBuilder
         builder->pipeline_barrier(
@@ -127,9 +134,11 @@ boost::leaf::result<void> VulkanPresenter::build_commands(
 }
 
 boost::leaf::result<bool> VulkanPresenter::draw() {
+    // acquire the swapchain image
     LEAF_AUTO(acquire_result, swapchain_->acquire_next_image_raw(present_end_semaphore_.get(), std::nullopt));
     auto[index, optimal] = acquire_result;
 
+    // if not optimal recreate
     if (!optimal) {
         LEAF_CHECK(build_swapchain());
 
@@ -142,6 +151,7 @@ boost::leaf::result<bool> VulkanPresenter::draw() {
     auto buffer = command_buffer_allocations_[index]->get_handle();
     vk::PipelineStageFlags flag = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
+    // submit built command buffers
     LEAF_CHECK(
         mff::to_result(
             present_queue_->get_handle()
@@ -166,7 +176,7 @@ boost::leaf::result<bool> VulkanPresenter::draw() {
 }
 
 boost::leaf::result<void> VulkanPresenter::build_swapchain() {
-    logger::main->info("Building swapchain");
+    logger::main->debug("Building VulkanPresenter swapchain");
     LEAF_AUTO(capabilities, surface_->get_capabilities(device_->get_physical_device()));
 
     LEAF_CHECK_OPTIONAL(

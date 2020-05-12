@@ -2,7 +2,6 @@
 #include <cmath>
 
 #include "./contour.h"
-#include "../renderer2.h"
 
 namespace canvas {
 
@@ -37,6 +36,7 @@ void Contour::add_cubic(const mff::Vector2f& control0, const mff::Vector2f& cont
 void Contour::add_segment(const Segment& segment) {
     add_point(segment.get_baseline().from, PointFlag::CONCRETE);
 
+    // add the necessary control points
     std::visit(
         mff::overloaded{
             [&](const Kind_::Quadratic& quad) {
@@ -56,6 +56,8 @@ void Contour::add_segment(const Segment& segment) {
 
 
 void Contour::add_ellipse(const Transform2f& transform) {
+    // create ellipse from quarter circles (we need to create them from bezier arcs and their
+    // accuracy is bad for something larger then quarter circle
     auto seg = Segment::quarter_circle_arc();
     add_segment(seg.transform(transform));
     add_segment(seg.transform(transform * Transform2f::from_rotation(M_PI_2)));
@@ -82,6 +84,7 @@ std::vector<mff::Vector2f> Contour::flatten() const {
 
     std::vector<mff::Vector2f> result;
 
+    // flatten all segments in this contour
     for (const auto& segment: segments) {
         auto flattened = segment.flatten();
 
@@ -100,6 +103,8 @@ std::vector<mff::Vector2f> Contour::flatten() const {
 std::optional<LineSegment2f> Contour::last_tangent() const {
     if (points.size() < 2) return std::nullopt;
 
+    // it is everytime the last control point
+    // https://pomax.github.io/bezierinfo/#pointvectors
     return LineSegment2f{points[points.size() - 2], points[points.size() - 1]};
 }
 
@@ -112,6 +117,7 @@ bool Contour::ContourSegmentView::equal(ranges::default_sentinel_t) const {
 }
 
 void Contour::ContourSegmentView::next() {
+    // basically just iterate over the points and get the next "concrete" endpoint
     bool include_close_segment = contour_->closed && !ignore_close_segment_;
 
     if ((!include_close_segment && index_ == contour_->size()) || index_ == (contour_->size() + 1)) {
@@ -156,6 +162,7 @@ void Contour::ContourSegmentView::next() {
 Contour::ContourSegmentView::ContourSegmentView(const Contour* contour_, bool ignore_close_segment)
     : contour_(contour_)
     , ignore_close_segment_(ignore_close_segment) {
+    // prepopulate the segment view
     next();
 }
 

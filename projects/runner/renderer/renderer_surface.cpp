@@ -4,12 +4,14 @@ boost::leaf::result<std::unique_ptr<RendererSurface>> RendererSurface::build(
     RendererContext* renderer,
     mff::Vector2ui dimensions
 ) {
+    logger::main->debug("Building RendererSurface");
     struct enable_RendererSurface : public RendererSurface {};
     std::unique_ptr<RendererSurface> result = std::make_unique<enable_RendererSurface>();
 
     result->renderer_ = renderer;
     result->dimensions_ = dimensions;
 
+    // init images
     LEAF_AUTO_TO(
         result->image_,
         mff::vulkan::AttachmentImage::build(
@@ -32,6 +34,7 @@ boost::leaf::result<std::unique_ptr<RendererSurface>> RendererSurface::build(
             vk::SampleCountFlagBits::e1
         ));
 
+    // init framebuffer
     LEAF_AUTO_TO(
         result->framebuffer_,
         mff::vulkan::FramebufferBuilder::start(result->renderer_->get_renderpass())

@@ -34,7 +34,6 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} INTERFACE
     ${Boost_INCLUDE_DIRS}
-    ${SHADERC_INCLUDE_DIR}
     )
 
 

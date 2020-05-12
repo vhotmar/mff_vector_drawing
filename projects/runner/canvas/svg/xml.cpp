@@ -79,7 +79,11 @@ auto parse_xml_internal(const Input& input) {
     };
 
     parser_fn<std::string_view> parse_attribute_value = parsers::alt(any_surrounded_by('\''), any_surrounded_by('"'));
-    parser_fn<std::pair<std::string_view, std::string_view>> parse_attribute = parsers::separated_pair(parse_name, parse_eq, parse_attribute_value);
+    parser_fn<std::pair<std::string_view, std::string_view>> parse_attribute = parsers::separated_pair(
+        parse_name,
+        parse_eq,
+        parse_attribute_value
+    );
     parser_fn<std::unordered_map<std::string, std::string>> parse_attributes = parsers::map(
         parsers::many0(parsers::preceded(parse_space_optional, parse_attribute)),
         [](const auto& attributes) {

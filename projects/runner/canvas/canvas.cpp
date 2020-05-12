@@ -2,6 +2,7 @@
 
 namespace mapbox::util {
 
+// helpers for mathbox
 template <>
 struct nth<0, ::mff::Vector2f> {
     inline static auto get(const ::mff::Vector2f& t) {
@@ -47,9 +48,11 @@ Canvas::PrerenderedPath::Record::Record(
 Canvas::PrerenderedPath Canvas::prerenderFill(canvas::Path2D& path, const Canvas::FillInfo& info) {
     PrerenderedPath result = {};
 
+    // get all the contours (simple paths)
     auto cs = path.get_outline().get_contours();
 
     for (const auto& contour: cs) {
+        // flatten them and run them through triangulation algorithm
         auto flattened = contour.flatten();
         auto indices = ::mapbox::earcut<std::uint32_t>(std::vector<std::vector<mff::Vector2f>>{flattened});
         auto vertices = flattened
@@ -76,10 +79,14 @@ void Canvas::drawPrerendered(const Canvas::PrerenderedPath& prerendered) {
 Canvas::PrerenderedPath Canvas::prerenderStroke(canvas::Path2D& path, const Canvas::StrokeInfo& info) {
     PrerenderedPath result = {};
 
+    // get all the contours (simple paths)
     auto cs = path.get_outline().get_contours();
 
     for (const auto& contour: cs) {
+        // flatten them
         auto flattened = contour.flatten();
+        // TODO: we should be able to stroke the contours directly not the flattened path
+        // and then stroke the flattened path
         auto points = get_stroke(flattened, info.style, contour.closed);
         auto vertices = points.vertices
             | ranges::views::transform([](const auto& pos) { return Vertex{pos}; })
@@ -94,32 +101,4 @@ Canvas::PrerenderedPath Canvas::prerenderStroke(canvas::Path2D& path, const Canv
     }
 
     return result;
-}
-
-//Canvas::PrerenderedPath Canvas::prerenderStroke(canvas::Path2D& path, const Canvas::StrokeInfo& info) {
-//    PrerenderedPath result = {};
-//
-//    auto cs = path.get_outline().get_contours();
-//
-//    for (const auto& contour: cs) {
-//        auto stroken = ::canvas::stroke(contour, info.style);
-//        auto flattened = stroken
-//            | ranges::views::transform([](const auto& contour) { return contour.flatten(); })
-//            | ranges::to<std::vector>();
-//        auto indices = ::mapbox::earcut<std::uint32_t>(flattened);
-//        auto vertices = flattened[0]
-//            | ranges::views::transform([](const auto& pos) { return Vertex{pos}; })
-//            | ranges::to<std::vector>();
-//
-//        result.records
-//            .emplace_back(
-//                std::move(vertices),
-//                std::move(indices),
-//                PushConstants{info.color, info.transform.transform, info.transform.transpose}
-//            );
-//    }
-//
-//    return result;
-//}
-
 }

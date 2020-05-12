@@ -18,10 +18,30 @@
  */
 class VulkanPresenter {
 public:
+    /**
+     * Build the presenter using VulkanEngine (which contains screen to present to + all other
+     * needed Vulkan handles
+     * @param engine
+     * @return
+     */
     static boost::leaf::result<std::unique_ptr<VulkanPresenter>> build(VulkanEngine* engine);
 
+    /**
+     * Get the built swapchain
+     * @return
+     */
     const mff::vulkan::Swapchain* get_swapchain() const;
+
+    /**
+     * Get presenter dimensions
+     * @return
+     */
     mff::Vector2ui get_dimensions() const;
+
+    /**
+     * Get format used by presenter
+     * @return
+     */
     vk::Format get_format() const;
 
     /**
@@ -55,7 +75,4 @@ private:
     mff::vulkan::UniqueSwapchain swapchain_ = nullptr;
     std::vector<mff::vulkan::UniqueSwapchainImage> swapchain_images_ = {};
     std::vector<mff::vulkan::UniqueCommandPoolAllocation> command_buffer_allocations_ = {};
-
-    // mff::vulkan::
-
 };
