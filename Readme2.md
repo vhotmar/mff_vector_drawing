@@ -32,7 +32,6 @@ Příklady:
 ```
 
 ## Popis zvoleného řešení
-<<<<<<< HEAD
 Původně jsem chtěl založit integraci s Vulkan API na knihovně již existující ["vulkano"](https://github.com/vulkano-rs/vulkano)
 a postupem času toto řešení přizpůsobovat mým potřebám. Nakonec se úkazalo, že to nebylo nejlepší rozhodnutí, neboť tato
 knihovna není pouze low-level wrapper nad Vulkan API, ale poskytuje i high-level API. Např. pro synchronizaci "Vulkan
@@ -41,15 +40,6 @@ implementaci a již nesplňovala jednu podmínku specifikace - "vyzkoušení low
 jednoduché wrappery kolem Vulkan API pro vytváření `Instance`, `Device`, `Queue`, `RenderPass` a dalších objektů.
 Pak i wrappery pro `Image` a `Buffer` (pomocí [VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)).
 Tyto wrappery se nachází v `projects/graphics`.
-=======
-Původně jsem chtěl založit integraci s Vulkan API na knihovně podobné již existující ["vulkano"](https://github.com/vulkano-rs/vulkano)
-a postupem času toto řešení přizpůsobovat mým potřebám, což nakonec nebylo nejlepší rozhodnutí, neboť tato knihovna není
-pouze low-level wrapper nad Vulkan API, ale poskytuje i high-level API např. pro synchronizaci "Vulkan Commands" (pomocí
-nádstavby zavné `GpuFutures`). Tato API by se dobře používala, ale byla složitá na implementaci a již nesplňovala jednu
-podmínku specifikace - "vyzkoušení low-level API Vulkan". Tedy vytvořil jsem jednoduché wrappery kolem Vulkan API pro
-vytváření `Instance`, `Device`, `Queue`, `RenderPass` a dalších objektů. Pak i wrappery pro `Image` a `Buffer` (pomocí
-[VMA](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)). Tyto wrappery se nachází v `projects/graphics`
->>>>>>>  update readme
 
 Samotné zobrazování SVG je rozděleno na část vykreslovací (`projects/runner/renderer` - obsahuje vše související s Vulkan API)
 a část která zpracovává samotnou vektorovou grafiku (`projects/runner/canvas`).
